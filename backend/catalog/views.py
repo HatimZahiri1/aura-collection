@@ -492,30 +492,30 @@ class StatsView(viewsets.ViewSet):
 
         # Distribution dynamique par collection réelle
         collection_colors = ['#2fb49c', '#0f3d38', '#4e6b65', '#d97706', '#e11d48', '#7c3aed', '#0284c7', '#059669', '#dc2626', '#ea580c']
-        all_collections = Collection.objects.filter(actif=True).order_by('ordre', 'nom')
+        all_collections = Collection.objects.all().order_by('ordre', 'nom')
         categories_stats = []
         for idx, col in enumerate(all_collections):
             c_slug = (col.slug or '').lower()
             if c_slug in ['promotions', 'promo']:
-                prod_count = Parfum.objects.filter(is_promo=True, actif=True).count()
+                prod_count = Parfum.objects.filter(is_promo=True).count()
             elif c_slug in ['packs-speciaux', 'packs']:
-                prod_count = Parfum.objects.filter(is_pack=True, actif=True).count()
+                prod_count = Parfum.objects.filter(is_pack=True).count()
             elif c_slug in ['parfums-homme', 'homme', 'gel-parfum-homme']:
-                prod_count = Parfum.objects.filter(genre='homme', is_pack=False, actif=True).count()
+                prod_count = Parfum.objects.filter(genre='homme', is_pack=False).count()
             elif c_slug in ['parfums-femme', 'femme', 'gel-parfum-femme']:
-                prod_count = Parfum.objects.filter(genre='femme', is_pack=False, actif=True).count()
+                prod_count = Parfum.objects.filter(genre='femme', is_pack=False).count()
             elif c_slug in ['parfums-unisexe', 'unisexe']:
-                prod_count = Parfum.objects.filter(genre='mixte', is_pack=False, actif=True).count()
+                prod_count = Parfum.objects.filter(genre='mixte', is_pack=False).count()
             else:
-                prod_count = col.parfums.filter(actif=True).count()
+                prod_count = col.parfums.count()
 
-            if prod_count > 0:
-                categories_stats.append({
-                    'name': col.nom,
-                    'slug': col.slug,
-                    'count': prod_count,
-                    'color': collection_colors[idx % len(collection_colors)],
-                })
+            categories_stats.append({
+                'name': col.nom,
+                'slug': col.slug,
+                'count': prod_count,
+                'actif': col.actif,
+                'color': collection_colors[idx % len(collection_colors)],
+            })
 
         # Top Parfums pour la vitrine du dashboard
         top_parfums_qs = Parfum.objects.filter(actif=True).order_by('-mis_en_avant', '-created_at')[:8]

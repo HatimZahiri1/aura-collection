@@ -118,20 +118,43 @@ export default function AdminStock() {
   }
 
   // Filtrage par collection et recherche
+  const getCollectionCount = (col) => {
+    const slug = (col.slug || '').toLowerCase()
+    if (slug === 'gel-parfum-homme' || slug === 'parfums-homme' || slug === 'homme') {
+      return parfums.filter(p => !p.is_pack && (p.genre === 'homme' || p.collections?.some(c => ['gel-parfum-homme', 'parfums-homme', 'homme'].includes(c.slug || c)))).length
+    }
+    if (slug === 'gel-parfum-femme' || slug === 'parfums-femme' || slug === 'femme') {
+      return parfums.filter(p => !p.is_pack && (p.genre === 'femme' || p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme', 'femme'].includes(c.slug || c)))).length
+    }
+    if (slug === 'promotions' || slug === 'promo') {
+      return parfums.filter(p => p.is_promo || p.collections?.some(c => ['promotions', 'promo'].includes(c.slug || c))).length
+    }
+    if (slug === 'packs-speciaux' || slug === 'packs') {
+      return parfums.filter(p => p.is_pack || p.collections?.some(c => ['packs-speciaux', 'packs'].includes(c.slug || c))).length
+    }
+    return parfums.filter(p =>
+      p.collections?.some(c => (c.slug || c) === col.slug || (c.id || c) === col.id) ||
+      p.collections_detail?.some(c => c.id === col.id || c.slug === col.slug)
+    ).length
+  }
+
   const filteredParfums = parfums.filter((p) => {
-    if (selectedCollection === 'homme' && p.genre !== 'homme') return false
-    if (selectedCollection === 'femme' && p.genre !== 'femme') return false
-    if (selectedCollection === 'mixte' && p.genre !== 'mixte') return false
-    if (selectedCollection === 'promotions' && !p.is_promo) return false
-    if (selectedCollection === 'packs-speciaux' && !p.is_pack) return false
-    if (
-      selectedCollection !== 'all' &&
-      !['homme', 'femme', 'mixte', 'promotions', 'packs-speciaux'].includes(selectedCollection)
-    ) {
-      const matchCol =
-        p.collections?.includes(selectedCollection) ||
-        p.collections_detail?.some((c) => c.slug === selectedCollection || c.id === selectedCollection)
-      if (!matchCol) return false
+    if (selectedCollection !== 'all') {
+      const slug = String(selectedCollection).toLowerCase()
+      if (slug === 'gel-parfum-homme' || slug === 'parfums-homme' || slug === 'homme') {
+        if (p.is_pack || (p.genre !== 'homme' && !p.collections?.some(c => ['gel-parfum-homme', 'parfums-homme', 'homme'].includes(c.slug || c)))) return false
+      } else if (slug === 'gel-parfum-femme' || slug === 'parfums-femme' || slug === 'femme') {
+        if (p.is_pack || (p.genre !== 'femme' && !p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme', 'femme'].includes(c.slug || c)))) return false
+      } else if (slug === 'promotions' || slug === 'promo') {
+        if (!p.is_promo && !p.collections?.some(c => ['promotions', 'promo'].includes(c.slug || c))) return false
+      } else if (slug === 'packs-speciaux' || slug === 'packs') {
+        if (!p.is_pack && !p.collections?.some(c => ['packs-speciaux', 'packs'].includes(c.slug || c))) return false
+      } else {
+        const matchCol =
+          p.collections?.some(c => (c.slug || c) === selectedCollection || (c.id || c) === selectedCollection) ||
+          p.collections_detail?.some((c) => c.slug === selectedCollection || c.id === selectedCollection)
+        if (!matchCol) return false
+      }
     }
 
     if (search.trim()) {
@@ -144,11 +167,6 @@ export default function AdminStock() {
   })
 
   const countTotal = parfums.length
-  const countHomme = parfums.filter((p) => p.genre === 'homme').length
-  const countFemme = parfums.filter((p) => p.genre === 'femme').length
-  const countMixte = parfums.filter((p) => p.genre === 'mixte').length
-  const countPromo = parfums.filter((p) => p.is_promo).length
-  const countPacks = parfums.filter((p) => p.is_pack).length
 
   // Stats globales de stock
   const stockMetrics = parfums.reduce(
@@ -249,81 +267,36 @@ export default function AdminStock() {
           </span>
         </button>
 
-        <button
-          onClick={() => setSelectedCollection('homme')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            selectedCollection === 'homme'
-              ? 'bg-[#0f3d38] text-white shadow-xs'
-              : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-          }`}
-        >
-          <span>Homme</span>
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              selectedCollection === 'homme' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'
-            }`}
-          >
-            {countHomme}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedCollection('femme')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            selectedCollection === 'femme'
-              ? 'bg-[#0f3d38] text-white shadow-xs'
-              : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-          }`}
-        >
-          <span>Femme</span>
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              selectedCollection === 'femme' ? 'bg-white/20 text-white' : 'bg-pink-50 text-pink-700'
-            }`}
-          >
-            {countFemme}
-          </span>
-        </button>
-
-        {countPacks > 0 && (
-          <button
-            onClick={() => setSelectedCollection('packs-speciaux')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              selectedCollection === 'packs-speciaux'
-                ? 'bg-[#0f3d38] text-white shadow-xs'
-                : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-            }`}
-          >
-            <span>Packs Spéciaux</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                selectedCollection === 'packs-speciaux' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'
+        {collections.map((col) => {
+          const count = getCollectionCount(col)
+          const isSelected = selectedCollection === col.slug || selectedCollection === col.id
+          const isPromo = (col.slug || '').toLowerCase() === 'promotions'
+          return (
+            <button
+              key={col.id || col.slug}
+              onClick={() => setSelectedCollection(col.slug || col.id)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-[#0f3d38] text-white shadow-xs'
+                  : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
               }`}
             >
-              {countPacks}
-            </span>
-          </button>
-        )}
-
-        {countPromo > 0 && (
-          <button
-            onClick={() => setSelectedCollection('promotions')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              selectedCollection === 'promotions'
-                ? 'bg-[#0f3d38] text-white shadow-xs'
-                : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-            }`}
-          >
-            <span>En Promotion</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                selectedCollection === 'promotions' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700'
-              }`}
-            >
-              {countPromo}
-            </span>
-          </button>
-        )}
+              {isPromo && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
+              <span>{col.nom}</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  isSelected
+                    ? 'bg-white/20 text-white'
+                    : isPromo
+                    ? 'bg-rose-50 text-rose-700'
+                    : 'bg-[#f0fbf8] text-[#0f3d38]'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Search Bar */}

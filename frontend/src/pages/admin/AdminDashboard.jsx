@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const [dashStats, setDashStats] = useState(outletCtx.stats || null)
   const [recentOrders, setRecentOrders] = useState([])
   const [parfumsList, setParfumsList] = useState([])
+  const [collectionsList, setCollectionsList] = useState([])
   const [loadingParfums, setLoadingParfums] = useState(true)
   const [selectedCategoryTab, setSelectedCategoryTab] = useState('all')
   const [chartPeriod, setChartPeriod] = useState('7j')
@@ -41,6 +42,11 @@ export default function AdminDashboard() {
       .then(res => setParfumsList(res.data.results || res.data || []))
       .catch(() => {})
       .finally(() => setLoadingParfums(false))
+
+    // 3. Charger les collections réelles de la boutique
+    adminAPI.getCollections()
+      .then(res => setCollectionsList(res.data.results || res.data || []))
+      .catch(() => {})
   }, [])
 
   const formatPrice = (price) => `${parseFloat(price || 0).toLocaleString('fr-MA')} MAD`
@@ -208,28 +214,69 @@ export default function AdminDashboard() {
     return maxVal > 0 ? maxVal : 1
   }, [topVentes])
 
-  // Catégories de produits & répartition
+  // Catégories de produits & répartition dynamiques
+  const collectionColors = ['#2fb49c', '#0f3d38', '#4e6b65', '#d97706', '#e11d48', '#7c3aed', '#0284c7', '#059669', '#dc2626', '#ea580c']
+
   const categoryStats = useMemo(() => {
+    if (collectionsList.length > 0) {
+      return collectionsList.map((col, idx) => {
+        const slug = (col.slug || '').toLowerCase()
+        let count = 0
+        if (slug === 'gel-parfum-homme' || slug === 'parfums-homme' || slug === 'homme') {
+          count = parfumsList.filter(p => !p.is_pack && (p.genre === 'homme' || p.collections?.some(c => ['gel-parfum-homme', 'parfums-homme', 'homme'].includes(c.slug || c)))).length
+        } else if (slug === 'gel-parfum-femme' || slug === 'parfums-femme' || slug === 'femme') {
+          count = parfumsList.filter(p => !p.is_pack && (p.genre === 'femme' || p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme', 'femme'].includes(c.slug || c)))).length
+        } else if (slug === 'promotions' || slug === 'promo') {
+          count = parfumsList.filter(p => p.is_promo || p.collections?.some(c => ['promotions', 'promo'].includes(c.slug || c))).length
+        } else if (slug === 'packs-speciaux' || slug === 'packs') {
+          count = parfumsList.filter(p => p.is_pack || p.collections?.some(c => ['packs-speciaux', 'packs'].includes(c.slug || c))).length
+        } else {
+          count = parfumsList.filter(p =>
+            p.collections?.some(c => (c.slug || c) === col.slug || (c.id || c) === col.id) ||
+            p.collections_detail?.some(c => c.id === col.id || c.slug === col.slug)
+          ).length
+        }
+        return {
+          id: col.id,
+          name: col.nom,
+          slug: col.slug,
+          count,
+          actif: col.actif,
+          color: collectionColors[idx % collectionColors.length],
+        }
+      })
+    }
     if (stats?.categories_stats && stats.categories_stats.length > 0) {
-      // Only show collections that have at least 1 product
-      return stats.categories_stats.filter(c => c.count > 0)
+      return stats.categories_stats
     }
     return []
-  }, [stats])
+  }, [collectionsList, parfumsList, stats])
 
   const totalProductsCount = useMemo(() => {
-    return categoryStats.reduce((sum, c) => sum + c.count, 0) || 1
-  }, [categoryStats])
+    const sum = categoryStats.reduce((s, c) => s + c.count, 0)
+    return sum > 0 ? sum : (parfumsList.length || 1)
+  }, [categoryStats, parfumsList])
 
   // Filtrage des parfums affichés dans la vitrine
   const filteredParfums = useMemo(() => {
     if (selectedCategoryTab === 'all') return parfumsList
-    if (selectedCategoryTab === 'homme') return parfumsList.filter(p => !p.is_pack && p.genre === 'homme')
-    if (selectedCategoryTab === 'femme') return parfumsList.filter(p => !p.is_pack && p.genre === 'femme')
-    if (selectedCategoryTab === 'mixte') return parfumsList.filter(p => !p.is_pack && p.genre === 'mixte')
-    if (selectedCategoryTab === 'packs') return parfumsList.filter(p => p.is_pack)
-    if (selectedCategoryTab === 'promos') return parfumsList.filter(p => p.is_promo)
-    return parfumsList
+    const slug = String(selectedCategoryTab).toLowerCase()
+    if (slug === 'gel-parfum-homme' || slug === 'parfums-homme' || slug === 'homme') {
+      return parfumsList.filter(p => !p.is_pack && (p.genre === 'homme' || p.collections?.some(c => ['gel-parfum-homme', 'parfums-homme', 'homme'].includes(c.slug || c))))
+    }
+    if (slug === 'gel-parfum-femme' || slug === 'parfums-femme' || slug === 'femme') {
+      return parfumsList.filter(p => !p.is_pack && (p.genre === 'femme' || p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme', 'femme'].includes(c.slug || c))))
+    }
+    if (slug === 'packs' || slug === 'packs-speciaux') {
+      return parfumsList.filter(p => p.is_pack || p.collections?.some(c => ['packs-speciaux', 'packs'].includes(c.slug || c)))
+    }
+    if (slug === 'promos' || slug === 'promotions') {
+      return parfumsList.filter(p => p.is_promo || p.collections?.some(c => ['promotions', 'promo'].includes(c.slug || c)))
+    }
+    return parfumsList.filter(p =>
+      p.collections?.some(c => (c.slug || c) === selectedCategoryTab || (c.id || c) === selectedCategoryTab) ||
+      p.collections_detail?.some(c => c.id === selectedCategoryTab || c.slug === selectedCategoryTab)
+    )
   }, [parfumsList, selectedCategoryTab])
 
   const statusBadges = {
@@ -496,6 +543,11 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
                           <span className="text-gray-700">{cat.name}</span>
+                          {cat.actif === false && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-normal">
+                              Masquée
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-gray-400 font-normal">{cat.count} réf.</span>
@@ -732,25 +784,32 @@ export default function AdminDashboard() {
 
           {/* Onglets de filtrage rapide de la vitrine */}
           <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1.5 rounded-2xl border border-gray-200/70">
-            {[
-              { id: 'all', label: 'Tous les produits' },
-              { id: 'homme', label: 'Gel Homme' },
-              { id: 'femme', label: 'Gel Femme' },
-              { id: 'packs', label: 'Packs Spéciaux' },
-              { id: 'promos', label: 'En Promotion' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedCategoryTab(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  selectedCategoryTab === tab.id
-                    ? 'bg-[#0f3d38] text-white shadow-2xs'
-                    : 'text-gray-600 hover:text-black hover:bg-gray-200/60'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <button
+              onClick={() => setSelectedCategoryTab('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                selectedCategoryTab === 'all'
+                  ? 'bg-[#0f3d38] text-white shadow-2xs'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-200/60'
+              }`}
+            >
+              Tous les produits
+            </button>
+            {collectionsList.map((col) => {
+              const isSelected = selectedCategoryTab === col.slug || selectedCategoryTab === col.id
+              return (
+                <button
+                  key={col.id || col.slug}
+                  onClick={() => setSelectedCategoryTab(col.slug || col.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0f3d38] text-white shadow-2xs'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-200/60'
+                  }`}
+                >
+                  {col.nom}
+                </button>
+              )
+            })}
           </div>
 
           {/* Grille des cartes de parfums */}

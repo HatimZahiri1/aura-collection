@@ -467,12 +467,28 @@ export default function AdminProducts() {
     }
   }
 
-  // Filtrage par les collections AURA
+  // Filtrage par les collections AURA dynamiques
   const countAll = parfums.length
-  const countHomme = parfums.filter(p => !p.is_pack && (p.genre === 'homme' || p.collections?.some(c => ['gel-parfum-homme', 'parfums-homme'].includes(c.slug || c)))).length
-  const countFemme = parfums.filter(p => !p.is_pack && (p.genre === 'femme' || p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme'].includes(c.slug || c)))).length
-  const countPromo = parfums.filter(p => p.is_promo || p.collections?.some(c => (c.slug || c) === 'promotions')).length
-  const countPacks = parfums.filter(p => p.is_pack || p.collections?.some(c => (c.slug || c) === 'packs-speciaux')).length
+
+  const getCollectionCount = (col) => {
+    const slug = (col.slug || '').toLowerCase()
+    if (slug === 'gel-parfum-homme' || slug === 'parfums-homme') {
+      return parfums.filter(p => !p.is_pack && (p.genre === 'homme' || p.collections?.some(c => ['gel-parfum-homme', 'parfums-homme'].includes(c.slug || c)))).length
+    }
+    if (slug === 'gel-parfum-femme' || slug === 'parfums-femme') {
+      return parfums.filter(p => !p.is_pack && (p.genre === 'femme' || p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme'].includes(c.slug || c)))).length
+    }
+    if (slug === 'promotions' || slug === 'promo') {
+      return parfums.filter(p => p.is_promo || p.collections?.some(c => (c.slug || c) === 'promotions' || (c.slug || c) === 'promo')).length
+    }
+    if (slug === 'packs-speciaux' || slug === 'packs') {
+      return parfums.filter(p => p.is_pack || p.collections?.some(c => (c.slug || c) === 'packs-speciaux' || (c.slug || c) === 'packs')).length
+    }
+    return parfums.filter(p =>
+      p.collections?.some(c => (c.slug || c) === col.slug || (c.id || c) === col.id) ||
+      p.collections_detail?.some(c => c.id === col.id || c.slug === col.slug)
+    ).length
+  }
 
   const filteredParfums = parfums.filter((p) => {
     if (selectedCollection === 'all') return true
@@ -482,13 +498,16 @@ export default function AdminProducts() {
     if (selectedCollection === 'gel-parfum-femme' || selectedCollection === 'parfums-femme') {
       return !p.is_pack && (p.genre === 'femme' || p.collections?.some(c => ['gel-parfum-femme', 'parfums-femme'].includes(c.slug || c)))
     }
-    if (selectedCollection === 'promotions') {
-      return Boolean(p.is_promo) || p.collections?.some(c => (c.slug || c) === 'promotions')
+    if (selectedCollection === 'promotions' || selectedCollection === 'promo') {
+      return Boolean(p.is_promo) || p.collections?.some(c => (c.slug || c) === 'promotions' || (c.slug || c) === 'promo')
     }
-    if (selectedCollection === 'packs-speciaux') {
-      return Boolean(p.is_pack) || p.collections?.some(c => (c.slug || c) === 'packs-speciaux')
+    if (selectedCollection === 'packs-speciaux' || selectedCollection === 'packs') {
+      return Boolean(p.is_pack) || p.collections?.some(c => (c.slug || c) === 'packs-speciaux' || (c.slug || c) === 'packs')
     }
-    return true
+    return (
+      p.collections?.some(c => (c.slug || c) === selectedCollection || (c.id || c) === selectedCollection) ||
+      p.collections_detail?.some(c => c.id === selectedCollection || c.slug === selectedCollection)
+    )
   })
 
   return (
@@ -535,7 +554,7 @@ export default function AdminProducts() {
         </motion.div>
       )}
 
-      {/* Onglets des Collections AURA */}
+      {/* Onglets des Collections AURA dynamiques */}
       <div className="bg-white rounded-2xl border border-[#d4e8e3] p-1.5 shadow-xs flex flex-wrap items-center gap-1.5">
         <button
           onClick={() => setSelectedCollection('all')}
@@ -553,71 +572,34 @@ export default function AdminProducts() {
           </span>
         </button>
 
-        <button
-          onClick={() => setSelectedCollection('gel-parfum-homme')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            selectedCollection === 'gel-parfum-homme' || selectedCollection === 'parfums-homme'
-              ? 'bg-[#0f3d38] text-white shadow-xs'
-              : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-          }`}
-        >
-          <span>Gel Parfum Homme</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            selectedCollection === 'gel-parfum-homme' || selectedCollection === 'parfums-homme' ? 'bg-white/20 text-white' : 'bg-[#f0fbf8] text-[#0f3d38]'
-          }`}>
-            {countHomme}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedCollection('gel-parfum-femme')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            selectedCollection === 'gel-parfum-femme' || selectedCollection === 'parfums-femme'
-              ? 'bg-[#0f3d38] text-white shadow-xs'
-              : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-          }`}
-        >
-          <span>Gel Parfum Femme</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            selectedCollection === 'gel-parfum-femme' || selectedCollection === 'parfums-femme' ? 'bg-white/20 text-white' : 'bg-[#f0fbf8] text-[#2fb49c]'
-          }`}>
-            {countFemme}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedCollection('packs-speciaux')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            selectedCollection === 'packs-speciaux'
-              ? 'bg-[#0f3d38] text-white shadow-xs'
-              : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-          }`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#2fb49c]" />
-          <span>Packs Spéciaux</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            selectedCollection === 'packs-speciaux' ? 'bg-white/20 text-white' : 'bg-[#f0fbf8] text-[#0f3d38]'
-          }`}>
-            {countPacks}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedCollection('promotions')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            selectedCollection === 'promotions'
-              ? 'bg-[#0f3d38] text-white shadow-xs'
-              : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
-          }`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          <span>Promotions</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            selectedCollection === 'promotions' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700'
-          }`}>
-            {countPromo}
-          </span>
-        </button>
+        {collectionsList.map((col) => {
+          const count = getCollectionCount(col)
+          const isSelected = selectedCollection === col.slug || selectedCollection === col.id
+          const isPromo = (col.slug || '').toLowerCase() === 'promotions'
+          return (
+            <button
+              key={col.id || col.slug}
+              onClick={() => setSelectedCollection(col.slug || col.id)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-[#0f3d38] text-white shadow-xs'
+                  : 'text-gray-600 hover:text-[#0f3d38] hover:bg-gray-100'
+              }`}
+            >
+              {isPromo && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
+              <span>{col.nom}</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isSelected
+                  ? 'bg-white/20 text-white'
+                  : isPromo
+                  ? 'bg-rose-50 text-rose-700'
+                  : 'bg-[#f0fbf8] text-[#0f3d38]'
+              }`}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Search Bar */}
