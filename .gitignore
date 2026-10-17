@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+package-lock.json.bak
+
+# Production builds
+dist/
+frontend/dist/
+build/
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/venv/
+venv/
+ENV/
+env/
+*.sqlite3-journal
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE & OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
