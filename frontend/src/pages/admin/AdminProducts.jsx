@@ -67,11 +67,19 @@ export default function AdminProducts() {
 
   const resetForm = () => {
     const initialGenre = (selectedCollection === 'gel-parfum-femme' || selectedCollection === 'parfums-femme') ? 'femme' : 'homme'
+    const defaultMarque = marques[0]?.id || 21
     setFormData({
-      nom: '', marque: '', description: '', genre: initialGenre,
-      famille_olfactive: 'boisee', concentration: 'gel',
-      notes_tete: '', notes_coeur: '', notes_fond: '',
-      actif: true, mis_en_avant: false,
+      nom: '',
+      marque: defaultMarque,
+      description: '',
+      genre: initialGenre,
+      famille_olfactive: 'boisee',
+      concentration: 'gel',
+      notes_tete: '',
+      notes_coeur: '',
+      notes_fond: '',
+      actif: true,
+      mis_en_avant: false,
       is_promo: selectedCollection === 'promotions',
       prix_promo: '',
       collections: [],
@@ -94,36 +102,36 @@ export default function AdminProducts() {
       ? parfum.collections.map(c => typeof c === 'object' ? c.id : c)
       : []
 
+    // Trouver le format 250ml existant ou le premier format
+    const existingFmt = parfum.formats?.find(f => f.type_format === 'flacon_250' || f.contenance_ml === 250) || parfum.formats?.[0]
+
     setFormData({
       nom: parfum.nom,
-      marque: parfum.marque,
+      marque: parfum.marque || marques[0]?.id || 21,
       description: parfum.description || '',
-      genre: parfum.genre,
-      famille_olfactive: parfum.famille_olfactive,
-      concentration: parfum.concentration,
+      genre: parfum.genre || 'homme',
+      famille_olfactive: parfum.famille_olfactive || 'boisee',
+      concentration: parfum.concentration || 'gel',
       notes_tete: parfum.notes_tete || '',
       notes_coeur: parfum.notes_coeur || '',
       notes_fond: parfum.notes_fond || '',
-      actif: parfum.actif,
-      mis_en_avant: parfum.mis_en_avant,
-      is_promo: Boolean(parfum.is_promo),
-      prix_promo: parfum.prix_promo || '',
+      actif: parfum.actif !== false,
+      mis_en_avant: Boolean(parfum.mis_en_avant),
+      is_promo: Boolean(parfum.is_promo || (existingFmt?.prix_promo && parseFloat(existingFmt.prix_promo) > 0)),
+      prix_promo: existingFmt?.prix_promo || parfum.prix_promo || '',
       collections: existingColIds,
       photo_principale: null,
-      formats: (parfum.formats && parfum.formats.length > 0)
-        ? parfum.formats.map(f => ({
-            id: f.id,
-            type_format: f.type_format,
-            contenance_ml: f.contenance_ml,
-            prix: f.prix,
-            prix_promo: f.prix_promo || '',
-            stock: f.stock,
-          }))
-        : [
-            { type_format: 'decant_5', contenance_ml: 5, prix: '', prix_promo: '', stock: 0 },
-            { type_format: 'decant_10', contenance_ml: 10, prix: '', prix_promo: '', stock: 0 },
-            { type_format: 'complet', contenance_ml: 100, prix: '', prix_promo: '', stock: 0 },
-          ],
+      // Toujours et strictement un seul format : Flacon 250ml
+      formats: [
+        {
+          id: existingFmt?.id,
+          type_format: 'flacon_250',
+          contenance_ml: 250,
+          prix: existingFmt?.prix || parfum.prix_min || '89',
+          prix_promo: existingFmt?.prix_promo || parfum.prix_promo || '',
+          stock: existingFmt?.stock ?? 50,
+        }
+      ],
     })
     setShowForm(true)
   }
@@ -144,22 +152,30 @@ export default function AdminProducts() {
     setMessage('')
 
     try {
+      const defaultMarque = marques[0]?.id || 21
+      const mainFmt = formData.formats[0] || { type_format: 'flacon_250', contenance_ml: 250, prix: '89', stock: 50 }
+      const promoPrice = (formData.is_promo && formData.prix_promo) 
+        ? formData.prix_promo 
+        : (mainFmt.prix_promo && parseFloat(mainFmt.prix_promo) > 0 ? mainFmt.prix_promo : '')
+
       const data = new FormData()
       data.append('nom', formData.nom)
-      data.append('marque', formData.marque)
-      data.append('description', formData.description)
-      data.append('genre', formData.genre)
-      data.append('famille_olfactive', formData.famille_olfactive)
-      data.append('concentration', formData.concentration)
-      data.append('notes_tete', formData.notes_tete)
-      data.append('notes_coeur', formData.notes_coeur)
-      data.append('notes_fond', formData.notes_fond)
+      data.append('marque', formData.marque || defaultMarque)
+      data.append('description', formData.description || '')
+      data.append('genre', formData.genre || 'homme')
+      data.append('famille_olfactive', formData.famille_olfactive || 'boisee')
+      data.append('concentration', formData.concentration || 'gel')
+      data.append('notes_tete', formData.notes_tete || '')
+      data.append('notes_coeur', formData.notes_coeur || '')
+      data.append('notes_fond', formData.notes_fond || '')
       data.append('actif', formData.actif)
       data.append('mis_en_avant', formData.mis_en_avant)
       data.append('is_promo', formData.is_promo)
       data.append('is_pack', false)
-      if (formData.prix_promo) {
-        data.append('prix_promo', formData.prix_promo)
+      if (promoPrice) {
+        data.append('prix_promo', promoPrice)
+      } else {
+        data.append('prix_promo', '')
       }
 
       formData.collections.forEach(colId => {
@@ -172,40 +188,38 @@ export default function AdminProducts() {
 
       if (editingId) {
         await adminAPI.updateParfum(editingId, data)
-        for (const fmt of formData.formats) {
-          if (fmt.id) {
-            await adminAPI.updateFormat(fmt.id, {
-              prix: fmt.prix,
-              prix_promo: fmt.prix_promo && parseFloat(fmt.prix_promo) > 0 ? parseFloat(fmt.prix_promo) : null,
-              stock: fmt.stock,
-              contenance_ml: fmt.contenance_ml,
-            })
-          } else {
-            await adminAPI.createFormat({
-              parfum: editingId,
-              type_format: fmt.type_format,
-              contenance_ml: fmt.contenance_ml,
-              prix: fmt.prix || 0,
-              prix_promo: fmt.prix_promo && parseFloat(fmt.prix_promo) > 0 ? parseFloat(fmt.prix_promo) : null,
-              stock: fmt.stock || 0,
-            })
-          }
+        // Mettre à jour ou créer le format unique 250ml
+        if (mainFmt.id) {
+          await adminAPI.updateFormat(mainFmt.id, {
+            type_format: 'flacon_250',
+            contenance_ml: 250,
+            prix: mainFmt.prix || '89',
+            prix_promo: promoPrice && parseFloat(promoPrice) > 0 ? parseFloat(promoPrice) : null,
+            stock: mainFmt.stock ?? 50,
+          })
+        } else {
+          await adminAPI.createFormat({
+            parfum: editingId,
+            type_format: 'flacon_250',
+            contenance_ml: 250,
+            prix: mainFmt.prix || '89',
+            prix_promo: promoPrice && parseFloat(promoPrice) > 0 ? parseFloat(promoPrice) : null,
+            stock: mainFmt.stock ?? 50,
+          })
         }
         setMessage('Produit mis à jour avec succès')
       } else {
         const createRes = await adminAPI.createParfum(data)
         const newParfumId = createRes.data?.id
         if (newParfumId) {
-          for (const fmt of formData.formats) {
-            await adminAPI.createFormat({
-              parfum: newParfumId,
-              type_format: fmt.type_format,
-              contenance_ml: fmt.contenance_ml,
-              prix: fmt.prix || 0,
-              prix_promo: fmt.prix_promo && parseFloat(fmt.prix_promo) > 0 ? parseFloat(fmt.prix_promo) : null,
-              stock: fmt.stock || 0,
-            })
-          }
+          await adminAPI.createFormat({
+            parfum: newParfumId,
+            type_format: 'flacon_250',
+            contenance_ml: 250,
+            prix: mainFmt.prix || '89',
+            prix_promo: promoPrice && parseFloat(promoPrice) > 0 ? parseFloat(promoPrice) : null,
+            stock: mainFmt.stock ?? 50,
+          })
         }
         setMessage('Produit créé avec succès')
       }
@@ -214,7 +228,12 @@ export default function AdminProducts() {
       setShowForm(false)
       resetForm()
     } catch (err) {
-      setMessage('Erreur: ' + (err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Erreur inconnue'))
+      console.error('Error saving product:', err)
+      const errDetails = err.response?.data?.detail 
+        || (err.response?.data && typeof err.response.data === 'object' ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(' | ') : null)
+        || err.message
+        || 'Erreur inconnue'
+      setMessage('Erreur: ' + errDetails)
     } finally {
       setSaving(false)
     }
@@ -224,7 +243,7 @@ export default function AdminProducts() {
   const openNewPackModal = () => {
     setPackData({
       nom: '',
-      format_type: 'decant_10',
+      format_type: 'pack_3',
       parfums: [],
       prix: '',
       stock: 10,
@@ -240,12 +259,7 @@ export default function AdminProducts() {
 
   const handleEditPack = (p) => {
     const fmt = p.formats?.[0]
-    let fmtType = 'decant_10'
-    if (fmt) {
-      if (fmt.contenance_ml === 5 || fmt.type_format === 'decant_5') fmtType = 'decant_5'
-      else if (fmt.contenance_ml === 100 || fmt.type_format === 'complet') fmtType = 'complet'
-      else fmtType = 'decant_10'
-    }
+    let fmtType = (fmt?.type_format === 'pack_4' || p.parfums_inclus?.length === 4) ? 'pack_4' : 'pack_3'
 
     const existingInclus = Array.isArray(p.parfums_inclus_detail) && p.parfums_inclus_detail.length > 0
       ? p.parfums_inclus_detail.map(item => item.id)
@@ -276,17 +290,14 @@ export default function AdminProducts() {
         return { ...prev, parfums: prev.parfums.filter(id => id !== parfumId) }
       }
       if (prev.parfums.length >= 4) {
-        alert('Un pack spécial peut contenir au maximum 4 parfums.')
+        alert('Un pack spécial peut contenir au maximum 4 gels douche.')
         return prev
       }
       const newParfums = [...prev.parfums, parfumId]
-      // Si le nom du pack est vide ou générique, on peut suggérer un nom
       let suggestedNom = prev.nom
       if (!prev.nom || prev.nom.startsWith('Pack')) {
         const count = newParfums.length
-        const countWord = count === 2 ? 'Duo' : count === 3 ? 'Trio' : count === 4 ? 'Quatuor' : `${count} Parfums`
-        const fmtName = prev.format_type === 'decant_5' ? '5ml' : prev.format_type === 'decant_10' ? '10ml' : 'Complet'
-        suggestedNom = `Pack ${countWord} (${fmtName})`
+        suggestedNom = `Pack Spécial (${count} Gels Douche 250ml)`
       }
 
       return {
@@ -367,14 +378,16 @@ export default function AdminProducts() {
         }
       ])
     } else {
-      const fmts = (parfum.formats || []).map(f => ({
-        id: f.id,
-        type_format: f.type_format,
-        contenance_ml: f.contenance_ml,
-        prix: f.prix,
-        prix_promo: f.prix_promo || '',
-      }))
-      setPromoFormats(fmts)
+      const f = parfum.formats?.find(fmt => fmt.type_format === 'flacon_250' || fmt.contenance_ml === 250) || parfum.formats?.[0]
+      setPromoFormats([
+        {
+          id: f?.id,
+          type_format: 'flacon_250',
+          contenance_ml: 250,
+          prix: f?.prix || parfum.prix_min || 89,
+          prix_promo: f?.prix_promo || parfum.prix_promo || '',
+        }
+      ])
     }
   }
 
@@ -1130,82 +1143,68 @@ export default function AdminProducts() {
                   </div>
                 </div>
 
-                {/* Formats */}
+                {/* Format Unique 250ml */}
                 <div className="pt-2">
-                  <label className="text-[#0f3d38] text-xs font-bold uppercase tracking-wider block mb-2.5">
-                    Tarifs & Stock par Format (MAD)
-                  </label>
-                  <div className="space-y-2.5">
-                    {formData.formats.map((fmt, idx) => (
-                      <div key={idx} className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 p-3 rounded-2xl bg-gray-50 border border-gray-200/80 items-center">
-                        <div>
-                          <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Format</span>
-                          <span className="text-[#0f3d38] text-xs font-bold">
-                            {fmt.type_format === 'flacon_250' ? 'Flacon 250ml' : fmt.type_format === 'pack_3' ? 'Pack de 3' : fmt.type_format === 'pack_4' ? 'Pack de 4' : fmt.type_format === 'decant_5' ? 'Format 5ml' : fmt.type_format === 'decant_10' ? 'Format 10ml' : 'Flacon complet'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Contenance (ML)</span>
-                          <input
-                            type="number"
-                            className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-[#0f3d38] focus:outline-hidden focus:border-[#0f3d38]"
-                            value={fmt.contenance_ml}
-                            onChange={(e) => {
-                              const f = [...formData.formats]
-                              f[idx] = {...f[idx], contenance_ml: parseInt(e.target.value) || 0}
-                              setFormData({...formData, formats: f})
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Prix Normal (MAD)</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Ex: 65"
-                            className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-[#0f3d38] font-semibold focus:outline-hidden focus:border-[#0f3d38]"
-                            value={fmt.prix}
-                            onChange={(e) => {
-                              const f = [...formData.formats]
-                              f[idx] = {...f[idx], prix: e.target.value}
-                              setFormData({...formData, formats: f})
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <span className="text-rose-600 text-[10px] uppercase font-bold block mb-0.5">Prix Promo (MAD)</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Optionnel"
-                            className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold focus:outline-hidden transition-all ${
-                              fmt.prix_promo
-                                ? 'bg-rose-50 border border-rose-300 text-rose-700 focus:border-rose-600'
-                                : 'bg-white border border-gray-200 text-gray-700 focus:border-[#0f3d38]'
-                            }`}
-                            value={fmt.prix_promo || ''}
-                            onChange={(e) => {
-                              const f = [...formData.formats]
-                              f[idx] = {...f[idx], prix_promo: e.target.value}
-                              setFormData({...formData, formats: f})
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Stock</span>
-                          <input
-                            type="number"
-                            className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-[#0f3d38] focus:outline-hidden focus:border-[#0f3d38]"
-                            value={fmt.stock}
-                            onChange={(e) => {
-                              const f = [...formData.formats]
-                              f[idx] = {...f[idx], stock: parseInt(e.target.value) || 0}
-                              setFormData({...formData, formats: f})
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#0f3d38] text-xs font-bold uppercase tracking-wider">
+                      Format Unique : Flacon 250ml
+                    </label>
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                      Gel Douche 250 ml
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-[#f0fbf8] border border-[#d4e8e3]">
+                    <div>
+                      <label className="text-gray-700 text-xs font-semibold block mb-1">
+                        Prix Normal (MAD) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        placeholder="Ex: 89"
+                        value={formData.formats[0]?.prix || ''}
+                        onChange={(e) => {
+                          const f = [...formData.formats]
+                          f[0] = { ...f[0], prix: e.target.value }
+                          setFormData({ ...formData, formats: f })
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs text-[#0f3d38] font-bold focus:border-[#0f3d38] focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-rose-700 text-xs font-bold block mb-1">
+                        Prix Promotionnel (MAD)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Optionnel (ex: 79)"
+                        value={formData.formats[0]?.prix_promo || ''}
+                        onChange={(e) => {
+                          const f = [...formData.formats]
+                          f[0] = { ...f[0], prix_promo: e.target.value }
+                          setFormData({ ...formData, formats: f })
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-rose-300 rounded-xl text-xs text-rose-700 font-bold focus:border-rose-600 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-gray-700 text-xs font-semibold block mb-1">
+                        Stock Disponible
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.formats[0]?.stock ?? 50}
+                        onChange={(e) => {
+                          const f = [...formData.formats]
+                          f[0] = { ...f[0], stock: parseInt(e.target.value) || 0 }
+                          setFormData({ ...formData, formats: f })
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs text-[#0f3d38] font-bold focus:border-[#0f3d38] focus:outline-hidden"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1229,6 +1228,15 @@ export default function AdminProducts() {
                     Mis en avant (Page d'accueil)
                   </label>
                 </div>
+
+                {message && message.startsWith('Erreur') && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                    <svg className="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{message}</span>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-4 border-t border-gray-100">
                   <button
@@ -1317,26 +1325,18 @@ export default function AdminProducts() {
                 <p className="text-xs text-gray-700 leading-relaxed">
                   {promoModalParfum.is_pack
                     ? 'Définissez le prix promotionnel pour ce pack spécial. Laissez vide pour conserver le prix normal.'
-                    : 'Définissez le prix promotionnel pour chaque décant (5ml, 10ml) et pour le flacon complet individuellement. Laissez le champ vide si un format n\'est pas en promotion.'}
+                    : 'Définissez le prix promotionnel pour ce gel douche parfumé 250ml. Laissez le champ vide si le produit n\'est pas en promotion.'}
                 </p>
               </div>
 
               {/* Formats List */}
               <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto pr-1">
                 {promoFormats.map((fmt, idx) => {
-                  const formatLabel = fmt.type_format === 'decant_5'
-                    ? 'Format 5ml'
-                    : fmt.type_format === 'decant_10'
-                    ? 'Pack Spécial'
-                    : fmt.type_format === 'complet'
-                    ? `Gel Douche (${fmt.contenance_ml || 250}ml)`
-                    : fmt.type_format === 'flacon_250'
-                    ? `Gel Douche 250ml`
-                    : fmt.type_format === 'pack_3'
+                  const formatLabel = fmt.type_format === 'pack_3'
                     ? 'Pack Spécial (3 Gels Parfumés)'
                     : fmt.type_format === 'pack_4'
                     ? 'Pack Spécial (4 Gels Parfumés)'
-                    : `Pack Spécial (${fmt.contenance_ml || 10}ml)`
+                    : 'Flacon 250ml'
 
                   const regularPrice = parseFloat(fmt.prix) || 0
                   const promoPrice = fmt.prix_promo ? parseFloat(fmt.prix_promo) : null
@@ -1459,9 +1459,6 @@ export default function AdminProducts() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredParfums.map((p) => {
-                  const f5 = p.formats?.find(f => f.type_format === 'decant_5' || f.contenance_ml === 5)
-                  const f10 = p.formats?.find(f => f.type_format === 'decant_10' || f.contenance_ml === 10)
-                  const fFull = p.formats?.find(f => f.type_format === 'complet' || f.contenance_ml > 10)
                   const mainFormat = p.formats?.[0]
 
                   const inclusList = p.parfums_inclus_detail || []
@@ -1574,41 +1571,41 @@ export default function AdminProducts() {
                           </div>
                         ) : (
                           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                            {p.formats && p.formats.length > 0 ? (
-                              p.formats.map((f) => {
-                                const label = f.type_format === 'flacon_250' || f.contenance_ml === 250
-                                  ? '250ml'
-                                  : f.type_format === 'decant_5' || f.contenance_ml === 5
-                                  ? '5ml'
-                                  : f.type_format === 'decant_10' || f.contenance_ml === 10
-                                  ? '10ml'
-                                  : f.type_format === 'complet'
-                                  ? 'Flacon'
-                                  : `${f.contenance_ml}ml`
-                                return (
-                                  <span
-                                    key={f.id}
-                                    className={`px-2 py-0.5 rounded-md ${
-                                      f.prix_promo && parseFloat(f.prix_promo) > 0
-                                        ? 'bg-rose-50 border border-rose-200'
-                                        : 'bg-[#0f3d38]/5 text-[#0f3d38] font-semibold'
-                                    }`}
-                                  >
-                                    {label}:{' '}
-                                    {f.prix_promo && parseFloat(f.prix_promo) > 0 ? (
-                                      <>
-                                        <span className="line-through text-gray-400 mr-0.5">{parseFloat(f.prix).toFixed(2)}</span>
-                                        <strong className="text-rose-600 font-extrabold">{parseFloat(f.prix_promo).toFixed(2)} DH</strong>
-                                      </>
+                            {(() => {
+                              const f = p.formats?.find(fmt => fmt.type_format === 'flacon_250' || fmt.contenance_ml === 250) || p.formats?.[0]
+                              const regularPrice = f?.prix ? parseFloat(f.prix) : (p.prix_min ? parseFloat(p.prix_min) : 89)
+                              const promoPrice = (f?.prix_promo && parseFloat(f.prix_promo) > 0)
+                                ? parseFloat(f.prix_promo)
+                                : (p.is_promo && p.prix_promo ? parseFloat(p.prix_promo) : null)
+                              const stockVal = f?.stock ?? (p.en_stock ? 50 : 0)
+
+                              return (
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-bold text-[#0f3d38] bg-[#0f3d38]/5 px-2 py-0.5 rounded-md border border-[#0f3d38]/10">
+                                      Flacon 250ml
+                                    </span>
+                                    {promoPrice && promoPrice < regularPrice ? (
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-xs font-extrabold text-rose-600">
+                                          {promoPrice.toFixed(0)} DH
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 line-through">
+                                          {regularPrice.toFixed(0)} DH
+                                        </span>
+                                      </div>
                                     ) : (
-                                      <strong>{f.prix ? `${parseFloat(f.prix).toFixed(2)} DH` : '—'}</strong>
+                                      <span className="text-xs font-extrabold text-[#0f3d38]">
+                                        {regularPrice.toFixed(0)} DH
+                                      </span>
                                     )}
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 block mt-0.5">
+                                    Stock : {stockVal}
                                   </span>
-                                )
-                              })
-                            ) : (
-                              <span className="text-gray-400 italic">Aucun format</span>
-                            )}
+                                </div>
+                              )
+                            })()}
                           </div>
                         )}
                       </td>
