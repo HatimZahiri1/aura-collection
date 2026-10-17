@@ -490,20 +490,19 @@ class StatsView(viewsets.ViewSet):
         # Trier par nombre d'unités vendues décroissant, puis chiffre d'affaires
         top_ventes.sort(key=lambda x: (x['ventes'], x['ca']), reverse=True)
 
-        # Distribution par catégorie de produits
-        homme_count = Parfum.objects.filter(genre='homme', is_pack=False, actif=True).count()
-        femme_count = Parfum.objects.filter(genre='femme', is_pack=False, actif=True).count()
-        unisexe_count = Parfum.objects.filter(genre='mixte', is_pack=False, actif=True).count()
-        packs_count = Parfum.objects.filter(is_pack=True, actif=True).count()
-        promo_count = Parfum.objects.filter(is_promo=True, actif=True).count()
-
-        categories_stats = [
-            {'name': 'Gels Homme', 'count': homme_count, 'color': '#2fb49c'},
-            {'name': 'Gels Femme', 'count': femme_count, 'color': '#0f3d38'},
-            {'name': 'Gels Mixte', 'count': unisexe_count, 'color': '#4e6b65'},
-            {'name': 'Packs Spéciaux', 'count': packs_count, 'color': '#d97706'},
-            {'name': 'Promotions', 'count': promo_count, 'color': '#e11d48'},
-        ]
+        # Distribution dynamique par collection réelle
+        collection_colors = ['#2fb49c', '#0f3d38', '#4e6b65', '#d97706', '#e11d48', '#7c3aed', '#0284c7', '#059669', '#dc2626', '#ea580c']
+        all_collections = Collection.objects.filter(actif=True).order_by('ordre', 'nom')
+        categories_stats = []
+        for idx, col in enumerate(all_collections):
+            prod_count = col.parfums.filter(actif=True).count()
+            if prod_count > 0:
+                categories_stats.append({
+                    'name': col.nom,
+                    'slug': col.slug,
+                    'count': prod_count,
+                    'color': collection_colors[idx % len(collection_colors)],
+                })
 
         # Top Parfums pour la vitrine du dashboard
         top_parfums_qs = Parfum.objects.filter(actif=True).order_by('-mis_en_avant', '-created_at')[:8]

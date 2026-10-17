@@ -211,14 +211,10 @@ export default function AdminDashboard() {
   // Catégories de produits & répartition
   const categoryStats = useMemo(() => {
     if (stats?.categories_stats && stats.categories_stats.length > 0) {
-      return stats.categories_stats
+      // Only show collections that have at least 1 product
+      return stats.categories_stats.filter(c => c.count > 0)
     }
-    return [
-      { name: 'Gel Homme', count: 1, color: '#2fb49c' },
-      { name: 'Gel Femme', count: 3, color: '#0f3d38' },
-      { name: 'Packs Spéciaux', count: 2, color: '#d97706' },
-      { name: 'Promotions', count: 2, color: '#e11d48' },
-    ]
+    return []
   }, [stats])
 
   const totalProductsCount = useMemo(() => {
@@ -487,32 +483,38 @@ export default function AdminDashboard() {
 
             {/* Barres horizontales de répartition */}
             <div className="space-y-4">
-              {categoryStats.map((cat, idx) => {
-                const percent = Math.round((cat.count / totalProductsCount) * 100) || 0
-                return (
-                  <div key={idx} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                        <span className="text-gray-700">{cat.name}</span>
+              {categoryStats.length === 0 ? (
+                <div className="text-center py-6 text-gray-400 text-sm">
+                  Aucune collection avec des produits actifs
+                </div>
+              ) : (
+                categoryStats.map((cat, idx) => {
+                  const percent = Math.round((cat.count / totalProductsCount) * 100) || 0
+                  return (
+                    <div key={cat.slug || idx} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span className="text-gray-700">{cat.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 font-normal">{cat.count} réf.</span>
+                          <span className="text-[#0f3d38] font-bold">{percent}%</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400 font-normal">{cat.count} réf.</span>
-                        <span className="text-[#0f3d38] font-bold">{percent}%</span>
+                      <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percent}%` }}
+                          transition={{ duration: 0.6, delay: idx * 0.08 }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: cat.color }}
+                        />
                       </div>
                     </div>
-                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percent}%` }}
-                        transition={{ duration: 0.6, delay: idx * 0.08 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
           </div>
 
