@@ -556,9 +556,33 @@ export default function AdminDashboard() {
         {/* Onglets de filtre */}
         <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1">
           {[
-            { key: 'tous', label: 'Tous les Produits', icon: '📊' },
-            { key: 'gels', label: 'Gels Douche Solo', icon: '🧴' },
-            { key: 'packs', label: 'Packs Spéciaux', icon: '📦' },
+            {
+              key: 'tous',
+              label: 'Tous les Produits',
+              icon: (
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              ),
+            },
+            {
+              key: 'gels',
+              label: 'Gels Douche Solo',
+              icon: (
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.437l-.318.158a6 6 0 01-3.86.437L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+              ),
+            },
+            {
+              key: 'packs',
+              label: 'Packs Spéciaux',
+              icon: (
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              ),
+            },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -569,8 +593,8 @@ export default function AdminDashboard() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              <span>{tab.icon}</span>
-              {tab.label}
+              {tab.icon}
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -615,12 +639,20 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Miniature du Gel Douche */}
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-white border border-gray-200 shadow-2xs mb-3 relative group-hover:scale-105 transition-transform shrink-0">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-white border border-gray-200 shadow-2xs mb-3 relative group-hover:scale-105 transition-transform shrink-0 flex items-center justify-center">
                     {item.photo ? (
                       <img src={item.photo} alt={item.nom} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
-                        {item.is_pack ? '📦' : 'Gel'}
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 bg-gray-50">
+                        {item.is_pack ? (
+                          <svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                        ) : (
+                          <svg className="w-6 h-6 text-[#2fb49c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.437l-.318.158a6 6 0 01-3.86.437L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                          </svg>
+                        )}
                       </div>
                     )}
                   </div>

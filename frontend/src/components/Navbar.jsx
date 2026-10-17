@@ -1,19 +1,23 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import useCartStore from '../store/cartStore'
+import { catalogAPI } from '../api/client'
 
 export default function Navbar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [allParfums, setAllParfums] = useState([])
+  const searchInputRef = useRef(null)
   const location = useLocation()
+  const navigate = useNavigate()
   const { count, openDrawer } = useCartStore()
 
   useEffect(() => {
     setSearchOpen(false)
     setSidebarOpen(false)
-  }, [location.pathname])
+  }, [location.pathname, location.search])
 
   // Lock background scroll when mobile sidebar is open
   useEffect(() => {
@@ -27,6 +31,40 @@ export default function Navbar() {
     }
   }, [sidebarOpen])
 
+  // Charger les parfums pour la recherche instantanée dès que la recherche est ouverte ou au montage
+  useEffect(() => {
+    catalogAPI.getParfums()
+      .then((res) => {
+        const list = res.data.results || res.data || []
+        setAllParfums(list)
+      })
+      .catch(() => {})
+  }, [searchOpen])
+
+  // Focus automatique sur l'input de recherche à l'ouverture
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 50)
+    }
+  }, [searchOpen])
+
+  // Résultats filtrés en direct selon la saisie
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return []
+    return allParfums.filter((p) => {
+      const matchNom = p.nom?.toLowerCase().includes(q)
+      const matchGenre = p.genre?.toLowerCase().includes(q)
+      const matchMarque = p.marque_nom?.toLowerCase().includes(q)
+      const matchFamille = p.famille_olfactive?.toLowerCase().includes(q)
+      const matchDesc = p.description?.toLowerCase().includes(q)
+      const isPack = q.includes('pack') && p.is_pack
+      return matchNom || matchGenre || matchMarque || matchFamille || matchDesc || isPack
+    }).slice(0, 6)
+  }, [allParfums, searchQuery])
+
   const navLinks = [
     { name: 'Accueil', path: '/' },
     { name: 'Catalogue', path: '/catalogue' },
@@ -37,6 +75,7 @@ export default function Navbar() {
     { name: 'Pack Spécial (3 ou 4 Gels)', path: '/catalogue?collection=packs-speciaux', highlight: true },
     { name: 'Gel Parfum Homme', path: '/catalogue?collection=gel-parfum-homme' },
     { name: 'Gel Parfum Femme', path: '/catalogue?collection=gel-parfum-femme' },
+    { name: 'Promotions', path: '/catalogue?collection=promotions' },
   ]
 
   const isActive = (path) => {
@@ -52,9 +91,10 @@ export default function Navbar() {
   }
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     if (searchQuery.trim()) {
-      window.location.href = `/catalogue?search=${encodeURIComponent(searchQuery.trim())}`
+      navigate(`/catalogue?search=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchOpen(false)
     }
   }
 
@@ -75,13 +115,17 @@ export default function Navbar() {
             {/* Gauche : Bouton Hamburger pour mobile & tablette (< md) */}
             <div className="w-16 sm:w-24 flex items-center justify-start">
               <button
+                id="mobile-menu-btn"
                 type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="p-2 text-[#0f3d38] hover:text-[#2fb49c] hover:bg-gray-100/70 rounded-full transition-all md:hidden cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSidebarOpen(true)
+                }}
+                className="p-2 sm:p-2.5 text-[#0f3d38] hover:text-[#2fb49c] active:bg-gray-100 rounded-full transition-all md:hidden cursor-pointer touch-manipulation flex items-center justify-center"
                 aria-label="Ouvrir le menu de navigation"
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
               {/* Espace vide pour équilibrer sur grand écran (>= md) */}
@@ -106,7 +150,9 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="p-2 text-[#0f3d38] hover:text-[#2fb49c] hover:bg-gray-100/70 transition-all rounded-full cursor-pointer"
+                className={`p-2 transition-all rounded-full cursor-pointer touch-manipulation ${
+                  searchOpen ? 'bg-[#0f3d38] text-white shadow-xs' : 'text-[#0f3d38] hover:text-[#2fb49c] hover:bg-gray-100/70'
+                }`}
                 aria-label="Recherche"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -117,7 +163,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={openDrawer}
-                className="p-2 text-[#0f3d38] hover:text-[#2fb49c] hover:bg-gray-100/70 transition-all relative rounded-full cursor-pointer"
+                className="p-2 text-[#0f3d38] hover:text-[#2fb49c] hover:bg-gray-100/70 transition-all relative rounded-full cursor-pointer touch-manipulation"
                 aria-label="Panier"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,7 +225,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Dropdown de recherche */}
+        {/* Dropdown de recherche intelligente avec résultats en direct */}
         <AnimatePresence>
           {searchOpen && (
             <motion.div
@@ -187,20 +233,33 @@ export default function Navbar() {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="border-t border-gray-100 bg-[#eff0f5] overflow-hidden"
+              className="border-t border-gray-100 bg-[#f8faf9] shadow-inner overflow-visible relative z-30"
             >
-              <div className="max-w-2xl mx-auto px-4 py-3">
-                <p className="text-[11px] font-semibold text-[#0f3d38] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#2fb49c]" />
-                  Recherche d'un gel douche parfumé
-                </p>
+              <div className="max-w-2xl mx-auto px-4 py-3 sm:py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-semibold text-[#0f3d38] uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2fb49c] animate-pulse" />
+                    Recherche d'un gel douche parfumé
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchOpen(false)
+                      setSearchQuery('')
+                    }}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Fermer ✕
+                  </button>
+                </div>
+
                 <form onSubmit={handleSearchSubmit} className="relative">
                   <input
+                    ref={searchInputRef}
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Recherche d'un gel douche parfumé..."
-                    autoFocus
+                    placeholder="Tapez un parfum (ex: Bleu de Chanel, Mademoiselle, Pack...)"
                     className="w-full pl-11 pr-24 py-3 bg-white border border-gray-200 rounded-full text-xs sm:text-sm text-[#0f3d38] placeholder-gray-400 focus:outline-none focus:border-[#0f3d38] shadow-sm"
                   />
                   <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,6 +272,98 @@ export default function Navbar() {
                     Chercher
                   </button>
                 </form>
+
+                {/* Suggestions rapides si la recherche est vide */}
+                {!searchQuery.trim() && (
+                  <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Suggestions :</span>
+                    {['Bleu de Chanel', 'Mademoiselle', "J'adore", 'My Way', 'Packs Spéciaux'].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setSearchQuery(sug)}
+                        className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white border border-gray-200 text-[#0f3d38] hover:border-[#2fb49c] hover:bg-[#f0fbf8] transition-all cursor-pointer"
+                      >
+                        {sug}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Résultats en direct (Autocomplete live search) */}
+                {searchQuery.trim() && (
+                  <div className="mt-3 bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden divide-y divide-gray-100 max-h-[380px] overflow-y-auto">
+                    {searchResults.length > 0 ? (
+                      <>
+                        <div className="p-2.5 bg-gray-50/90 px-3 flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                            {searchResults.length} produit{searchResults.length > 1 ? 's' : ''} trouvé{searchResults.length > 1 ? 's' : ''}
+                          </span>
+                          <span className="text-[10px] text-gray-400">Cliquez pour voir la fiche</span>
+                        </div>
+                        {searchResults.map((parfum) => {
+                          const prix = parfum.is_promo && parfum.prix_promo ? parfum.prix_promo : (parfum.prix_min || parfum.formats?.[0]?.prix || '89')
+                          return (
+                            <Link
+                              key={parfum.id}
+                              to={`/parfum/${parfum.id}`}
+                              onClick={() => {
+                                setSearchOpen(false)
+                                setSearchQuery('')
+                              }}
+                              className="flex items-center gap-3 p-3 hover:bg-[#f0fbf8] transition-colors group cursor-pointer"
+                            >
+                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
+                                {parfum.photo_principale ? (
+                                  <img src={parfum.photo_principale} alt={parfum.nom} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-serif">AURA</div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-xs font-bold text-[#0f3d38] truncate group-hover:text-[#2fb49c] transition-colors">
+                                  {parfum.nom}
+                                </h4>
+                                <p className="text-[10px] text-gray-500 capitalize">
+                                  {parfum.is_pack ? 'Pack Spécial • Flacons 250ml' : `Gel Douche 250ml • ${parfum.genre}`}
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-xs font-black text-[#0f3d38]">
+                                  {parseFloat(prix).toFixed(0)} DH
+                                </span>
+                                {parfum.is_promo && (
+                                  <span className="block text-[9px] font-bold text-rose-600 uppercase">Promo</span>
+                                )}
+                              </div>
+                            </Link>
+                          )
+                        })}
+                        <div className="p-2.5 bg-gray-50 text-center border-t border-gray-100">
+                          <button
+                            type="button"
+                            onClick={handleSearchSubmit}
+                            className="text-xs font-bold text-[#0f3d38] hover:underline uppercase tracking-wider cursor-pointer"
+                          >
+                            Voir tous les résultats pour « {searchQuery} » →
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-8 px-4 text-center">
+                        <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-xs font-bold text-gray-600">
+                          Aucun parfum ne correspond à « <span className="text-[#0f3d38] font-extrabold">{searchQuery}</span> »
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Vérifiez l'orthographe ou parcourez nos collections dans le catalogue.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -224,15 +375,15 @@ export default function Navbar() {
       {/* ======================================================== */}
       <AnimatePresence>
         {sidebarOpen && (
-          <>
+          <div className="fixed inset-0 z-[100] md:hidden">
             {/* Backdrop sombre flouté */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.2 }}
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 md:hidden"
+              className="fixed inset-0 bg-black/65 backdrop-blur-sm cursor-pointer"
               aria-hidden="true"
             />
 
@@ -241,8 +392,8 @@ export default function Navbar() {
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="fixed top-0 left-0 bottom-0 w-[84%] max-w-[320px] bg-white z-55 shadow-2xl flex flex-col md:hidden overflow-hidden"
+              transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+              className="relative w-[85%] max-w-[320px] h-full bg-white z-[110] shadow-2xl flex flex-col overflow-hidden"
               role="dialog"
               aria-label="Menu principal"
             >
@@ -265,7 +416,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer touch-manipulation"
                   aria-label="Fermer le menu"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,7 +442,7 @@ export default function Navbar() {
                         className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all ${
                           active
                             ? 'bg-[#0f3d38] text-white shadow-xs'
-                            : 'text-[#0f3d38] hover:bg-[#f0fbf8]'
+                            : 'text-[#0f3d38] hover:bg-[#f0fbf8] active:bg-[#e6f7f3]'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -333,7 +484,7 @@ export default function Navbar() {
                       className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
                         cat.highlight
                           ? 'bg-emerald-50 text-[#0f3d38] border border-emerald-200 font-bold'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          : 'text-gray-700 hover:bg-gray-50 active:bg-[#f0fbf8]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -364,7 +515,7 @@ export default function Navbar() {
                     href="https://wa.me/212651470308?text=Bonjour%20AURA%20COLLECTION,%20j'aimerais%20passer%20une%20commande%20ou%20avoir%20des%20renseignements"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 w-full p-3 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+                    className="flex items-center gap-2.5 w-full p-3 bg-[#25D366] hover:bg-[#20ba5a] active:bg-[#1da851] text-white rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all cursor-pointer touch-manipulation"
                   >
                     <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                       <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z" />
@@ -377,7 +528,7 @@ export default function Navbar() {
                     href="https://www.instagram.com/maison.aura.collection?rpxt=OWVpeHhzdm40cWp5"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 w-full p-3 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+                    className="flex items-center gap-2.5 w-full p-3 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] active:opacity-90 text-white rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all cursor-pointer touch-manipulation"
                   >
                     <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
@@ -399,7 +550,7 @@ export default function Navbar() {
                 </div>
               </div>
             </motion.aside>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </>
