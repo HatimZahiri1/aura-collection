@@ -34,6 +34,13 @@ function spaFallbackPlugin() {
           fs.mkdirSync(targetDir, { recursive: true })
           fs.copyFileSync(indexHtml, path.join(targetDir, 'index.html'))
         })
+
+        // 3. Copier les fichiers media dans dist/media pour un service statique ultra-rapide par Vercel CDN
+        const backendMedia = path.resolve(__dirname, '../backend/media')
+        const targetMedia = path.join(distDir, 'media')
+        if (fs.existsSync(backendMedia)) {
+          fs.cpSync(backendMedia, targetMedia, { recursive: true, force: true })
+        }
       }
     },
   }

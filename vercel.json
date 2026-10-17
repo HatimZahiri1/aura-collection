@@ -22,6 +22,10 @@
       "dest": "/api/index.py"
     },
     {
+      "src": "/media/(.*)",
+      "dest": "/frontend/media/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {

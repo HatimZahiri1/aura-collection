@@ -16,8 +16,8 @@ load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-u+nxg-)&^%7w9=4=h-ic9p10u)faw91mv%^-n!j#yk*p&7uhru')
 
-# Temporairement activer DEBUG pour diagnostiquer
-DEBUG = True
+# DEBUG désactivé en production sauf si explicitement demandé
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1')
 
 ALLOWED_HOSTS = ['*']
 
@@ -73,10 +73,15 @@ WSGI_APPLICATION = 'parfum_project.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
+    # Le port 5432 sur le pooler Supabase est en 'session mode' (limité à 15 connexions max).
+    # Sur Vercel serverless, il faut utiliser le port 6543 'transaction mode' pour supporter des connexions illimitées.
+    if 'pooler.supabase.com:5432' in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace(':5432', ':6543')
+
     DATABASES = {
         'default': dj_database_url.parse(
             DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=0,  # 0 pour serverless afin de fermer la connexion dès la fin de chaque requête
             ssl_require=True
         )
     }
