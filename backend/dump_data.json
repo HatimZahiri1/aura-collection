@@ -1,0 +1,462 @@
+[
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1500000$x5RzhIixzAZf8iDpNwfHPT$yjPUYALYJVq+BbDImS8FxolmlN0BkWX/SNJ+CrwZvcc=",
+    "last_login": null,
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "admin@parfum.ma",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-10-14T19:09:22.528Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "catalog.marque",
+  "pk": 21,
+  "fields": {
+    "nom": "AURA COLLECTION",
+    "logo": "logos/logo.jpeg",
+    "description": "Maison Aura - Haute Parfumerie & Gels Douche Parfumés d'Exception. Des formules soyeuses sans sulfates ni parabènes.",
+    "actif": true,
+    "created_at": "2026-10-17T03:07:39.643Z"
+  }
+},
+{
+  "model": "catalog.collection",
+  "pk": 10,
+  "fields": {
+    "nom": "Gel Parfum Homme",
+    "slug": "gel-parfum-homme",
+    "description": "Nos gels douche parfumés masculins aux notes boisées, fraîches et affirmées.",
+    "image": "collections/homme-gel.jpeg",
+    "actif": true,
+    "ordre": 1,
+    "created_at": "2026-10-17T03:07:39.644Z"
+  }
+},
+{
+  "model": "catalog.collection",
+  "pk": 11,
+  "fields": {
+    "nom": "Gel Parfum Femme",
+    "slug": "gel-parfum-femme",
+    "description": "Des créations florales, orientales et sensuelles pour sublimer votre rituel de douche quotidien.",
+    "image": "collections/femme-gel.jpeg",
+    "actif": true,
+    "ordre": 2,
+    "created_at": "2026-10-17T03:07:39.645Z"
+  }
+},
+{
+  "model": "catalog.collection",
+  "pk": 12,
+  "fields": {
+    "nom": "Packs Spéciaux",
+    "slug": "packs-speciaux",
+    "description": "Profitez de nos offres groupées exclusives : Pack de 3 à 239 DH et Pack Complet de 4 à 299 DH.",
+    "image": "collections/packs-gel.png",
+    "actif": true,
+    "ordre": 3,
+    "created_at": "2026-10-17T03:07:39.646Z"
+  }
+},
+{
+  "model": "catalog.collection",
+  "pk": 13,
+  "fields": {
+    "nom": "Promotions",
+    "slug": "promotions",
+    "description": "Découvrez toutes nos offres promotionnelles et packs avantageux.",
+    "image": "collections/promos-gel.jpeg",
+    "actif": true,
+    "ordre": 4,
+    "created_at": "2026-10-17T03:07:39.647Z"
+  }
+},
+{
+  "model": "catalog.parfum",
+  "pk": 64,
+  "fields": {
+    "nom": "Bleu de Chanel",
+    "marque": 21,
+    "description": "Gel douche parfumé de luxe 250ml inspiré de Bleu de Chanel. Une formule onctueuse 0% sulfates, 0% parabènes qui nettoie délicatement tout en laissant une empreinte boisée et aromatique irrésistible sur la peau.",
+    "genre": "homme",
+    "famille_olfactive": "boisee",
+    "notes_tete": "Citron vert, Menthe fraîche, Poivre rose",
+    "notes_coeur": "Lavande, Gingembre, Jasmin",
+    "notes_fond": "Bois de cèdre, Santal, Ambre, Encens",
+    "concentration": "gel",
+    "photo_principale": "parfums/bleu-chanel.jpeg",
+    "actif": true,
+    "mis_en_avant": true,
+    "is_pack": false,
+    "is_promo": false,
+    "prix_promo": null,
+    "created_at": "2026-10-17T03:07:39.648Z",
+    "updated_at": "2026-10-17T10:16:15.903Z",
+    "collections": [
+      10
+    ],
+    "parfums_inclus": []
+  }
+},
+{
+  "model": "catalog.parfum",
+  "pk": 65,
+  "fields": {
+    "nom": "Mademoiselle",
+    "marque": 21,
+    "description": "Gel douche parfumé de luxe 250ml inspiré de Coco Mademoiselle. Une texture soyeuse qui se transforme en mousse aérienne pour révéler des accords chyprés et floraux envoûtants.",
+    "genre": "femme",
+    "famille_olfactive": "orientale",
+    "notes_tete": "Orange vive, Mandarine, Bergamote",
+    "notes_coeur": "Rose de Mai, Jasmin délicat, Ylang-ylang",
+    "notes_fond": "Patchouli noble, Vétiver, Vanille bourbon, Musc blanc",
+    "concentration": "gel",
+    "photo_principale": "parfums/mademoiselle.jpeg",
+    "actif": true,
+    "mis_en_avant": true,
+    "is_pack": false,
+    "is_promo": false,
+    "prix_promo": null,
+    "created_at": "2026-10-17T03:07:39.658Z",
+    "updated_at": "2026-10-17T03:07:39.658Z",
+    "collections": [
+      11
+    ],
+    "parfums_inclus": []
+  }
+},
+{
+  "model": "catalog.parfum",
+  "pk": 66,
+  "fields": {
+    "nom": "J'adore",
+    "marque": 21,
+    "description": "Gel douche parfumé d'exception 250ml inspiré de J'adore. Un bouquet floral sensuel et lumineux qui enveloppe le corps d'une caresse parfumée raffinée et satinée.",
+    "genre": "femme",
+    "famille_olfactive": "florale",
+    "notes_tete": "Mandarine d'Italie, Poire juteuse, Melon, Pêche",
+    "notes_coeur": "Ylang-ylang des Comores, Rose Damascena, Jasmin Sambac",
+    "notes_fond": "Cèdre blanc, Mûre, Muscs précieux",
+    "concentration": "gel",
+    "photo_principale": "parfums/jadore.jpeg",
+    "actif": true,
+    "mis_en_avant": true,
+    "is_pack": false,
+    "is_promo": false,
+    "prix_promo": null,
+    "created_at": "2026-10-17T03:07:39.666Z",
+    "updated_at": "2026-10-17T03:07:39.666Z",
+    "collections": [
+      11
+    ],
+    "parfums_inclus": []
+  }
+},
+{
+  "model": "catalog.parfum",
+  "pk": 67,
+  "fields": {
+    "nom": "My Way",
+    "marque": 21,
+    "description": "Gel douche parfumé 250ml inspiré de My Way. Une invitation au voyage avec ses notes lumineuses de fleurs blanches et vanille pour un rituel de douche ressourçant.",
+    "genre": "femme",
+    "famille_olfactive": "florale",
+    "notes_tete": "Bergamote de Calabre, Fleur d'oranger d'Égypte",
+    "notes_coeur": "Tubéreuse éclatante, Jasmin d'Inde",
+    "notes_fond": "Bois de cèdre de Virginie, Vanille de Madagascar, Musc blanc",
+    "concentration": "gel",
+    "photo_principale": "parfums/my-way.jpeg",
+    "actif": true,
+    "mis_en_avant": true,
+    "is_pack": false,
+    "is_promo": false,
+    "prix_promo": null,
+    "created_at": "2026-10-17T03:07:39.674Z",
+    "updated_at": "2026-10-17T03:07:39.674Z",
+    "collections": [
+      11
+    ],
+    "parfums_inclus": []
+  }
+},
+{
+  "model": "catalog.parfum",
+  "pk": 68,
+  "fields": {
+    "nom": "Pack Spécial (3 Gels Parfumés)",
+    "marque": 21,
+    "description": "Pack Spécial 3 Gels Douche Parfumés (3 x 250ml). Offre exclusive à 239 DH au lieu de 267 DH. Choisissez 3 de vos fragrances préférées pour varier les plaisirs sous la douche !",
+    "genre": "mixte",
+    "famille_olfactive": "fraiche",
+    "notes_tete": "",
+    "notes_coeur": "",
+    "notes_fond": "",
+    "concentration": "gel",
+    "photo_principale": "parfums/pack-de-3.png",
+    "actif": true,
+    "mis_en_avant": true,
+    "is_pack": true,
+    "is_promo": true,
+    "prix_promo": "239.00",
+    "created_at": "2026-10-17T03:07:39.683Z",
+    "updated_at": "2026-10-17T03:07:39.683Z",
+    "collections": [
+      12,
+      13
+    ],
+    "parfums_inclus": [
+      67,
+      66,
+      65
+    ]
+  }
+},
+{
+  "model": "catalog.parfum",
+  "pk": 69,
+  "fields": {
+    "nom": "Pack Spécial (4 Gels Parfumés)",
+    "marque": 21,
+    "description": "La Meilleure Offre AURA COLLECTION : L'intégralité des 4 Gels Douche Parfumés 250ml (Mademoiselle, J'adore, My Way et Bleu de Chanel) pour seulement 299 DH au lieu de 356 DH. Économisez 57 DH !",
+    "genre": "mixte",
+    "famille_olfactive": "fraiche",
+    "notes_tete": "",
+    "notes_coeur": "",
+    "notes_fond": "",
+    "concentration": "gel",
+    "photo_principale": "parfums/pack-de-4.jpeg",
+    "actif": true,
+    "mis_en_avant": true,
+    "is_pack": true,
+    "is_promo": true,
+    "prix_promo": "299.00",
+    "created_at": "2026-10-17T03:07:39.692Z",
+    "updated_at": "2026-10-17T03:07:39.692Z",
+    "collections": [
+      12,
+      13
+    ],
+    "parfums_inclus": [
+      67,
+      66,
+      65,
+      64
+    ]
+  }
+},
+{
+  "model": "catalog.format",
+  "pk": 164,
+  "fields": {
+    "parfum": 64,
+    "type_format": "flacon_250",
+    "contenance_ml": 250,
+    "prix": "89.00",
+    "prix_promo": null,
+    "stock": 50
+  }
+},
+{
+  "model": "catalog.format",
+  "pk": 165,
+  "fields": {
+    "parfum": 65,
+    "type_format": "flacon_250",
+    "contenance_ml": 250,
+    "prix": "89.00",
+    "prix_promo": null,
+    "stock": 50
+  }
+},
+{
+  "model": "catalog.format",
+  "pk": 166,
+  "fields": {
+    "parfum": 66,
+    "type_format": "flacon_250",
+    "contenance_ml": 250,
+    "prix": "89.00",
+    "prix_promo": null,
+    "stock": 50
+  }
+},
+{
+  "model": "catalog.format",
+  "pk": 167,
+  "fields": {
+    "parfum": 67,
+    "type_format": "flacon_250",
+    "contenance_ml": 250,
+    "prix": "89.00",
+    "prix_promo": null,
+    "stock": 50
+  }
+},
+{
+  "model": "catalog.format",
+  "pk": 168,
+  "fields": {
+    "parfum": 68,
+    "type_format": "pack_3",
+    "contenance_ml": 250,
+    "prix": "267.00",
+    "prix_promo": "239.00",
+    "stock": 29
+  }
+},
+{
+  "model": "catalog.format",
+  "pk": 169,
+  "fields": {
+    "parfum": 69,
+    "type_format": "pack_4",
+    "contenance_ml": 250,
+    "prix": "356.00",
+    "prix_promo": "299.00",
+    "stock": 30
+  }
+},
+{
+  "model": "orders.commande",
+  "pk": 26,
+  "fields": {
+    "nom_client": "Fatima Zahra",
+    "telephone": "0655443322",
+    "adresse": "Boulevard d Anfa",
+    "ville": "Casablanca",
+    "frais_livraison": "0.00",
+    "statut": "annulee",
+    "notes": "Sonner à l interphone B2 | [Remise Pack automatique: -28 DH (1x Pack 3 Gels (239 DH))]",
+    "total": "239.00",
+    "created_at": "2026-10-17T01:46:44.786Z",
+    "updated_at": "2026-10-17T01:54:17.916Z"
+  }
+},
+{
+  "model": "orders.commande",
+  "pk": 27,
+  "fields": {
+    "nom_client": "Hatim Zahiri",
+    "telephone": "0698090000",
+    "adresse": "Quartier Maarif",
+    "ville": "Casablanca",
+    "frais_livraison": "0.00",
+    "statut": "livree",
+    "notes": "[Remise Pack automatique: -57 DH (1x Pack 4 Gels (299 DH))]",
+    "total": "299.00",
+    "created_at": "2026-10-17T01:53:39.525Z",
+    "updated_at": "2026-10-17T03:41:36.081Z"
+  }
+},
+{
+  "model": "orders.commande",
+  "pk": 28,
+  "fields": {
+    "nom_client": "Hatim Zahiri",
+    "telephone": "0698121010",
+    "adresse": "Agdal",
+    "ville": "Rabat",
+    "frais_livraison": "20.00",
+    "statut": "livree",
+    "notes": "",
+    "total": "198.00",
+    "created_at": "2026-10-17T02:10:13.674Z",
+    "updated_at": "2026-10-17T03:41:34.965Z"
+  }
+},
+{
+  "model": "orders.commande",
+  "pk": 29,
+  "fields": {
+    "nom_client": "Test Client",
+    "telephone": "0612345678",
+    "adresse": "Test Adresse",
+    "ville": "Casablanca",
+    "frais_livraison": "0.00",
+    "statut": "en_attente",
+    "notes": "",
+    "total": "239.00",
+    "created_at": "2026-10-17T03:49:55.887Z",
+    "updated_at": "2026-10-17T03:49:55.887Z"
+  }
+},
+{
+  "model": "orders.commande",
+  "pk": 30,
+  "fields": {
+    "nom_client": "Test Pack",
+    "telephone": "0655443322",
+    "adresse": "123 Rue Test",
+    "ville": "Casablanca",
+    "frais_livraison": "0.00",
+    "statut": "en_attente",
+    "notes": "",
+    "total": "239.00",
+    "created_at": "2026-10-17T03:51:30.104Z",
+    "updated_at": "2026-10-17T03:51:30.104Z"
+  }
+},
+{
+  "model": "orders.lignecommande",
+  "pk": 7,
+  "fields": {
+    "commande": 29,
+    "format": 169,
+    "quantite": 1,
+    "prix_unitaire": "239.00",
+    "fragrances_choisies": "Bleu de Chanel, Mademoiselle, J'adore"
+  }
+},
+{
+  "model": "orders.lignecommande",
+  "pk": 8,
+  "fields": {
+    "commande": 30,
+    "format": 168,
+    "quantite": 1,
+    "prix_unitaire": "239.00",
+    "fragrances_choisies": "Bleu de Chanel, Mademoiselle, J'adore"
+  }
+},
+{
+  "model": "orders.lignecommande",
+  "pk": 9,
+  "fields": {
+    "commande": 27,
+    "format": 169,
+    "quantite": 1,
+    "prix_unitaire": "299.00",
+    "fragrances_choisies": "Mademoiselle, J'adore, My Way, Bleu de Chanel"
+  }
+},
+{
+  "model": "orders.lignecommande",
+  "pk": 10,
+  "fields": {
+    "commande": 28,
+    "format": 164,
+    "quantite": 1,
+    "prix_unitaire": "89.00",
+    "fragrances_choisies": ""
+  }
+},
+{
+  "model": "orders.lignecommande",
+  "pk": 11,
+  "fields": {
+    "commande": 28,
+    "format": 165,
+    "quantite": 1,
+    "prix_unitaire": "89.00",
+    "fragrances_choisies": ""
+  }
+}
+]
