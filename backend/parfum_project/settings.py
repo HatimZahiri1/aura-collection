@@ -14,9 +14,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 load_dotenv(BASE_DIR.parent / '.env')
 
-SECRET_KEY = 'django-insecure-u+nxg-)&^%7w9=4=h-ic9p10u)faw91mv%^-n!j#yk*p&7uhru'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-u+nxg-)&^%7w9=4=h-ic9p10u)faw91mv%^-n!j#yk*p&7uhru')
 
-DEBUG = True
+# Désactiver DEBUG en production (Vercel)
+DEBUG = os.environ.get('VERCEL', '') == ''
 
 ALLOWED_HOSTS = ['*']
 
@@ -100,7 +101,8 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files (images)
 MEDIA_URL = '/media/'
