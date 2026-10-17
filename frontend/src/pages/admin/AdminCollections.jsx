@@ -117,6 +117,20 @@ export default function AdminCollections() {
     }
   }
 
+  const handleToggleActif = async (col) => {
+    try {
+      await adminAPI.updateCollection(col.id, { actif: !col.actif })
+      setMessage(
+        col.actif
+          ? `Collection "${col.nom}" masquée de la boutique`
+          : `Collection "${col.nom}" rendue visible sur la boutique`
+      )
+      loadData()
+    } catch (err) {
+      alert('Erreur lors de la mise à jour de la collection')
+    }
+  }
+
   // Ouvrir le gestionnaire d'association de parfums
   const openParfumManager = (col) => {
     setSelectedColForParfums(col)
@@ -248,7 +262,9 @@ export default function AdminCollections() {
                 key={col.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl border border-gray-200/90 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                className={`bg-white rounded-3xl border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
+                  col.actif ? 'border-gray-200/90' : 'border-gray-200/60 opacity-60'
+                }`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-3">
@@ -267,14 +283,29 @@ export default function AdminCollections() {
                         <span className="text-[10px] font-mono text-gray-400 block">/catalogue?collection={col.slug}</span>
                       </div>
                     </div>
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                        col.actif ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'
+                    {/* Toggle Actif/Inactif — contrôle la visibilité sur la boutique */}
+                    <button
+                      onClick={() => handleToggleActif(col)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
+                        col.actif
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
                       }`}
+                      title={col.actif ? 'Cliquer pour masquer de la boutique' : 'Cliquer pour rendre visible sur la boutique'}
                     >
-                      {col.actif ? 'Active' : 'Masquée'}
-                    </span>
+                      <span className={`w-2 h-2 rounded-full ${col.actif ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                      {col.actif ? 'Visible' : 'Masquée'}
+                    </button>
                   </div>
+
+                  {!col.actif && (
+                    <div className="mb-3 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-700 font-medium flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                      Cette collection n'est pas visible sur la boutique
+                    </div>
+                  )}
 
                   <p className="text-xs text-gray-500 mb-4 line-clamp-2">
                     {col.description || 'Collection accessible depuis la boutique et le catalogue.'}
@@ -416,16 +447,19 @@ export default function AdminCollections() {
                   />
                 </div>
 
-                <div className="flex items-center gap-3 pt-2">
-                  <label className="flex items-center gap-2 text-gray-700 text-xs font-medium cursor-pointer">
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200/80">
+                  <label className="flex items-center gap-2 text-gray-700 text-xs font-semibold cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.actif}
                       onChange={(e) => setFormData({ ...formData, actif: e.target.checked })}
                       className="accent-[#0f3d38] rounded w-4 h-4"
                     />
-                    Collection Active (visible dans la boutique)
+                    Collection Active (visible sur la page d'accueil et dans le catalogue)
                   </label>
+                  <p className="text-[11px] text-gray-500 mt-1 ml-6">
+                    Si décochée, la collection reste affichée dans votre espace admin mais sera masquée pour les clients sur l'accueil et le catalogue.
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-gray-100">

@@ -17,7 +17,7 @@ export default function HomePage() {
       id: 'gel-parfum-femme',
       slug: 'gel-parfum-femme',
       title: 'GEL PARFUM FEMME',
-      subtitle: 'Mademoiselle, J’adore & My Way (250ml)',
+      subtitle: "Mademoiselle, J'adore & My Way (250ml)",
       image: '/gels/mademoiselle.jpeg',
       link: '/catalogue?collection=gel-parfum-femme',
     },
@@ -33,23 +33,23 @@ export default function HomePage() {
 
   const [collections, setCollections] = useState(defaultCollections)
 
+  const imageMap = {
+    'gel-parfum-homme': '/gels/bleu-chanel.jpeg',
+    'parfums-homme': '/gels/bleu-chanel.jpeg',
+    'gel-parfum-femme': '/gels/mademoiselle.jpeg',
+    'parfums-femme': '/gels/mademoiselle.jpeg',
+    'packs-speciaux': '/gels/pack-de-3.png',
+    'promotions': '/gels/pack-de-4.jpeg',
+    'promo': '/gels/pack-de-4.jpeg',
+  }
+
   useEffect(() => {
     catalogAPI.getCollections()
       .then((res) => {
         const data = res.data.results || res.data
-        if (data && data.length > 0) {
-          const imageMap = {
-            'gel-parfum-homme': '/gels/bleu-chanel.jpeg',
-            'parfums-homme': '/gels/bleu-chanel.jpeg',
-            'gel-parfum-femme': '/gels/mademoiselle.jpeg',
-            'parfums-femme': '/gels/mademoiselle.jpeg',
-            'packs-speciaux': '/gels/pack-de-3.png',
-            'promotions': '/gels/pack-de-4.jpeg',
-          }
-          const mainSlugs = ['gel-parfum-homme', 'gel-parfum-femme', 'packs-speciaux']
-          const filtered = data.filter(c => mainSlugs.includes(c.slug) || ['parfums-homme', 'parfums-femme'].includes(c.slug))
-          const displayData = filtered.length >= 3 ? filtered : data
-          const merged = displayData.slice(0, 3).map((c) => ({
+        if (Array.isArray(data)) {
+          // Show ALL active collections dynamically
+          const merged = data.map((c) => ({
             id: c.id,
             slug: c.slug,
             title: c.nom.toUpperCase(),
@@ -57,13 +57,12 @@ export default function HomePage() {
             image: c.image || imageMap[c.slug] || '/gels/mademoiselle.jpeg',
             link: `/catalogue?collection=${c.slug}`,
           }))
-          if (merged.length > 0) {
-            setCollections(merged)
-          }
+          setCollections(merged)
         }
       })
       .catch(() => {})
   }, [])
+
 
   return (
     <div className="bg-[#f4faf8] pb-16">
@@ -230,75 +229,85 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3. Collections Section (Exactement les 3 Collections demandées) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f3d38] uppercase tracking-wider font-sans">
-              Nos Collections
-            </h2>
-            <div className="w-12 h-1 bg-[#2fb49c] rounded-full mt-2"></div>
-          </div>
-          <Link
-            to="/catalogue"
-            className="text-xs font-bold uppercase tracking-widest text-[#0f3d38] hover:text-[#2fb49c] flex items-center gap-1 group"
-          >
-            <span>Voir tout</span>
-            <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {collections.map((col) => (
-            <div key={col.id || col.slug}>
-              <Link
-                to={col.link}
-                className="group block bg-white rounded-3xl overflow-hidden border border-[#d4e8e3] shadow-xs hover:shadow-xl transition-all duration-300"
-              >
-                {/* 4:5 Aspect Ratio Image */}
-                <div className="aspect-[4/3] sm:aspect-[4/3] bg-[#f0fbf8] overflow-hidden relative">
-                  <img
-                    src={col.image}
-                    alt={col.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
-                </div>
-
-                {/* Caption / Title */}
-                <div className="p-5 flex flex-col justify-between min-h-[90px]">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#0f3d38] group-hover:text-[#2fb49c] flex items-center justify-between gap-1 transition-colors">
-                    <span className="line-clamp-1">{col.title}</span>
-                    <svg className="w-4 h-4 text-gray-400 group-hover:text-[#2fb49c] group-hover:translate-x-1 transition-all shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </h3>
-                  {col.subtitle && (
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                      {col.subtitle}
-                    </p>
-                  )}
-                </div>
-              </Link>
+      {/* 3. Collections Section (Adapté dynamiquement aux collections actives) */}
+      {collections.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f3d38] uppercase tracking-wider font-sans">
+                Nos Collections
+              </h2>
+              <div className="w-12 h-1 bg-[#2fb49c] rounded-full mt-2"></div>
             </div>
-          ))}
-        </div>
+            <Link
+              to="/catalogue"
+              className="text-xs font-bold uppercase tracking-widest text-[#0f3d38] hover:text-[#2fb49c] flex items-center gap-1 group"
+            >
+              <span>Voir tout</span>
+              <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </Link>
+          </div>
 
-        {/* Bouton d'accès direct au Catalogue complet */}
-        <div className="mt-12 text-center">
-          <Link
-            to="/catalogue"
-            className="inline-flex items-center gap-3 px-10 py-4 bg-[#0f3d38] hover:bg-[#134d47] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 cursor-pointer"
-          >
-            <span>Explorer tout le catalogue</span>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </Link>
-        </div>
-      </section>
+          <div className={`grid grid-cols-1 ${
+            collections.length === 1
+              ? 'max-w-md mx-auto'
+              : collections.length === 2
+              ? 'sm:grid-cols-2 max-w-3xl mx-auto'
+              : collections.length === 4
+              ? 'sm:grid-cols-2 lg:grid-cols-4'
+              : 'sm:grid-cols-2 lg:grid-cols-3'
+          } gap-6`}>
+            {collections.map((col) => (
+              <div key={col.id || col.slug}>
+                <Link
+                  to={col.link}
+                  className="group block bg-white rounded-3xl overflow-hidden border border-[#d4e8e3] shadow-xs hover:shadow-xl transition-all duration-300"
+                >
+                  {/* 4:5 Aspect Ratio Image */}
+                  <div className="aspect-[4/3] sm:aspect-[4/3] bg-[#f0fbf8] overflow-hidden relative">
+                    <img
+                      src={col.image}
+                      alt={col.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                  </div>
+
+                  {/* Caption / Title */}
+                  <div className="p-5 flex flex-col justify-between min-h-[90px]">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#0f3d38] group-hover:text-[#2fb49c] flex items-center justify-between gap-1 transition-colors">
+                      <span className="line-clamp-1">{col.title}</span>
+                      <svg className="w-4 h-4 text-gray-400 group-hover:text-[#2fb49c] group-hover:translate-x-1 transition-all shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </h3>
+                    {col.subtitle && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                        {col.subtitle}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          {/* Bouton d'accès direct au Catalogue complet */}
+          <div className="mt-12 text-center">
+            <Link
+              to="/catalogue"
+              className="inline-flex items-center gap-3 px-10 py-4 bg-[#0f3d38] hover:bg-[#134d47] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 cursor-pointer"
+            >
+              <span>Explorer tout le catalogue</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

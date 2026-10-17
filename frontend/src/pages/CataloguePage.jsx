@@ -65,13 +65,29 @@ export default function CataloguePage() {
 
   const totalPages = Math.ceil(totalCount / 60)
 
-  // Collections AURA
+  const [activeCollections, setActiveCollections] = useState(null)
+
+  useEffect(() => {
+    catalogAPI.getCollections()
+      .then((res) => {
+        const list = res.data.results || res.data || []
+        if (Array.isArray(list)) {
+          setActiveCollections(list)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Collections AURA dynamiques (uniquement les collections actives)
   const quickCollections = [
     { label: 'Tous les produits', slug: '' },
-    { label: 'Gel Parfum Homme', slug: 'gel-parfum-homme' },
-    { label: 'Gel Parfum Femme', slug: 'gel-parfum-femme' },
-    { label: 'Packs Spéciaux', slug: 'packs-speciaux' },
-    { label: 'Promotions', slug: 'promotions' },
+    ...(activeCollections !== null
+      ? activeCollections.map((c) => ({ label: c.nom, slug: c.slug }))
+      : [
+          { label: 'Gel Parfum Homme', slug: 'gel-parfum-homme' },
+          { label: 'Gel Parfum Femme', slug: 'gel-parfum-femme' },
+          { label: 'Packs Spéciaux', slug: 'packs-speciaux' },
+        ]),
   ]
 
   const sortOptions = [

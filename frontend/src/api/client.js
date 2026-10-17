@@ -171,19 +171,20 @@ export const adminAPI = {
     clearApiCache()
     return res
   },
-  // Collections
-  getCollections: (params) => cachedGet('/catalog/collections/', { params }, 60000),
+  getCollections: (params) => api.get('/catalog/collections/', { params: { include_inactive: true, ...params } }),
   createCollection: async (data) => {
-    const res = await api.post('/catalog/collections/', data, {
+    const isFormData = data instanceof FormData
+    const res = await api.post('/catalog/collections/', data, isFormData ? {
       headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    } : undefined)
     clearApiCache()
     return res
   },
   updateCollection: async (id, data) => {
-    const res = await api.patch(`/catalog/collections/${id}/`, data, {
+    const isFormData = data instanceof FormData
+    const res = await api.patch(`/catalog/collections/${id}/`, data, isFormData ? {
       headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    } : undefined)
     clearApiCache()
     return res
   },

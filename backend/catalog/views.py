@@ -495,7 +495,20 @@ class StatsView(viewsets.ViewSet):
         all_collections = Collection.objects.filter(actif=True).order_by('ordre', 'nom')
         categories_stats = []
         for idx, col in enumerate(all_collections):
-            prod_count = col.parfums.filter(actif=True).count()
+            c_slug = (col.slug or '').lower()
+            if c_slug in ['promotions', 'promo']:
+                prod_count = Parfum.objects.filter(is_promo=True, actif=True).count()
+            elif c_slug in ['packs-speciaux', 'packs']:
+                prod_count = Parfum.objects.filter(is_pack=True, actif=True).count()
+            elif c_slug in ['parfums-homme', 'homme', 'gel-parfum-homme']:
+                prod_count = Parfum.objects.filter(genre='homme', is_pack=False, actif=True).count()
+            elif c_slug in ['parfums-femme', 'femme', 'gel-parfum-femme']:
+                prod_count = Parfum.objects.filter(genre='femme', is_pack=False, actif=True).count()
+            elif c_slug in ['parfums-unisexe', 'unisexe']:
+                prod_count = Parfum.objects.filter(genre='mixte', is_pack=False, actif=True).count()
+            else:
+                prod_count = col.parfums.filter(actif=True).count()
+
             if prod_count > 0:
                 categories_stats.append({
                     'name': col.nom,
@@ -548,9 +561,10 @@ class CollectionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         include_inactive = self.request.query_params.get('include_inactive')
-        is_staff = bool(self.request.user and self.request.user.is_staff)
-        show_inactive = is_staff and (
+        is_admin = bool(self.request.user and (self.request.user.is_staff or self.request.user.is_superuser))
+        show_inactive = (
             str(include_inactive).lower() in ['true', '1']
+            or is_admin
             or self.action in ['update', 'partial_update', 'destroy']
         )
         if not show_inactive:

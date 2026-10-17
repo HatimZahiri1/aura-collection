@@ -71,12 +71,33 @@ export default function Navbar() {
     { name: 'Contact', path: '/contact' },
   ]
 
-  const categoryShortcuts = [
-    { name: 'Pack Spécial (3 ou 4 Gels)', path: '/catalogue?collection=packs-speciaux', highlight: true },
-    { name: 'Gel Parfum Homme', path: '/catalogue?collection=gel-parfum-homme' },
-    { name: 'Gel Parfum Femme', path: '/catalogue?collection=gel-parfum-femme' },
-    { name: 'Promotions', path: '/catalogue?collection=promotions' },
-  ]
+  const [navbarCollections, setNavbarCollections] = useState(null)
+
+  useEffect(() => {
+    catalogAPI.getCollections()
+      .then((res) => {
+        const list = res.data.results || res.data || []
+        if (Array.isArray(list)) {
+          setNavbarCollections(list)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const categoryShortcuts = useMemo(() => {
+    if (navbarCollections !== null) {
+      return navbarCollections.map((col) => ({
+        name: col.nom,
+        path: `/catalogue?collection=${col.slug}`,
+        highlight: col.slug === 'packs-speciaux',
+      }))
+    }
+    return [
+      { name: 'Pack Spécial (3 ou 4 Gels)', path: '/catalogue?collection=packs-speciaux', highlight: true },
+      { name: 'Gel Parfum Homme', path: '/catalogue?collection=gel-parfum-homme' },
+      { name: 'Gel Parfum Femme', path: '/catalogue?collection=gel-parfum-femme' },
+    ]
+  }, [navbarCollections])
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/' && !location.search
