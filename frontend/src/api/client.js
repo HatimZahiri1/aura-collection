@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${API_BASE}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,7 +28,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const { data } = await axios.post('/api/token/refresh/', { refresh })
+          const { data } = await axios.post(`${API_BASE}/api/token/refresh/`, { refresh })
           localStorage.setItem('access_token', data.access)
           originalRequest.headers.Authorization = `Bearer ${data.access}`
           return api(originalRequest)
@@ -63,7 +65,7 @@ export const ordersAPI = {
 
 // ===== Admin API =====
 export const adminAPI = {
-  login: (credentials) => axios.post('/api/token/', credentials),
+  login: (credentials) => axios.post(`${API_BASE}/api/token/`, credentials),
   getStats: () => api.get('/catalog/stats/'),
   // Parfums CRUD
   getParfums: (params) => api.get('/catalog/parfums/', { params: { include_inactive: 'true', ...params } }),

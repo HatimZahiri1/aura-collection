@@ -108,8 +108,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True  # Dev only - restrict in production
+# CORS & CSRF
+CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
 # DRF
 REST_FRAMEWORK = {
