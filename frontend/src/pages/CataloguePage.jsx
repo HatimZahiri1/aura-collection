@@ -20,7 +20,10 @@ export default function CataloguePage() {
   const page = parseInt(searchParams.get('page')) || 1
 
   useEffect(() => {
-    setLoading(true)
+    // N'afficher le loader bloquant que si on n'a rien à afficher
+    if (parfums.length === 0) {
+      setLoading(true)
+    }
     const pageSize = 60
     const params = { page, ordering, page_size: pageSize }
     if (collection) params.collection = collection
@@ -30,20 +33,23 @@ export default function CataloguePage() {
     if (marque) params.marque = marque
     if (search) params.search = search
 
-    Promise.all([
-      catalogAPI.getParfums(params),
-      catalogAPI.getMarques(),
-    ])
-      .then(([pRes, mRes]) => {
+    catalogAPI.getParfums(params)
+      .then((pRes) => {
         const rawList = pRes.data.results || pRes.data || []
         const activeList = Array.isArray(rawList) ? rawList.filter((p) => p.actif !== false) : []
         setParfums(activeList)
         setTotalCount(pRes.data.count || activeList.length || 0)
-        setMarques(mRes.data.results || mRes.data || [])
       })
       .catch((err) => console.error('Error fetching catalogue:', err))
       .finally(() => setLoading(false))
   }, [collection, genre, famille, marque, search, ordering, page])
+
+  useEffect(() => {
+    // Charger les marques une seule fois au montage
+    catalogAPI.getMarques()
+      .then((mRes) => setMarques(mRes.data.results || mRes.data || []))
+      .catch(() => {})
+  }, [])
 
   const updateFilter = (key, value) => {
     const params = new URLSearchParams(searchParams)

@@ -43,14 +43,43 @@ api.interceptors.response.use(
   }
 )
 
-// ===== Catalog API =====
+// ===== In-Memory SWR Cache for Instant Page Transitions =====
+const apiCache = new Map()
+
+export function clearApiCache() {
+  apiCache.clear()
+}
+
+async function cachedGet(url, config = {}, ttlMs = 180000) {
+  const cacheKey = `${url}:${JSON.stringify(config.params || {})}`
+  const cached = apiCache.get(cacheKey)
+  const now = Date.now()
+
+  // Si on a des données en cache encore valides, les renvoyer immédiatement (0 ms)
+  if (cached && (now - cached.timestamp < ttlMs)) {
+    // Si les données ont plus de 30 secondes, rafraîchir discrètement en arrière-plan
+    if (now - cached.timestamp > 30000) {
+      api.get(url, config).then((res) => {
+        apiCache.set(cacheKey, { data: res, timestamp: Date.now() })
+      }).catch(() => {})
+    }
+    return cached.data
+  }
+
+  // Requête réseau initiale
+  const res = await api.get(url, config)
+  apiCache.set(cacheKey, { data: res, timestamp: Date.now() })
+  return res
+}
+
+// ===== Catalog API (Ultra-rapide avec cache) =====
 export const catalogAPI = {
-  getParfums: (params) => api.get('/catalog/parfums/', { params }),
-  getParfum: (id) => api.get(`/catalog/parfums/${id}/`),
-  getFeatured: () => api.get('/catalog/parfums/featured/'),
-  getNouveautes: () => api.get('/catalog/parfums/nouveautes/'),
-  getMarques: () => api.get('/catalog/marques/'),
-  getCollections: () => api.get('/catalog/collections/'),
+  getParfums: (params) => cachedGet('/catalog/parfums/', { params }),
+  getParfum: (id) => cachedGet(`/catalog/parfums/${id}/`),
+  getFeatured: () => cachedGet('/catalog/parfums/featured/'),
+  getNouveautes: () => cachedGet('/catalog/parfums/nouveautes/'),
+  getMarques: () => cachedGet('/catalog/marques/'),
+  getCollections: () => cachedGet('/catalog/collections/'),
 }
 
 // ===== Contact API =====
@@ -60,55 +89,127 @@ export const contactAPI = {
 
 // ===== Orders API =====
 export const ordersAPI = {
-  createCommande: (data) => api.post('/orders/commandes/', data),
+  createCommande: async (data) => {
+    const res = await api.post('/orders/commandes/', data)
+    clearApiCache()
+    return res
+  },
 }
 
 // ===== Admin API =====
 export const adminAPI = {
   login: (credentials) => axios.post(`${API_BASE}/api/token/`, credentials),
-  getStats: () => api.get('/catalog/stats/'),
+  getStats: () => cachedGet('/catalog/stats/', {}, 60000),
   // Parfums CRUD
-  getParfums: (params) => api.get('/catalog/parfums/', { params: { include_inactive: 'true', ...params } }),
-  createParfum: (data) => api.post('/catalog/parfums/', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  updateParfum: (id, data) => api.patch(`/catalog/parfums/${id}/`, data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  deleteParfum: (id) => api.delete(`/catalog/parfums/${id}/`),
-  createPack: (data) => api.post('/catalog/parfums/create_pack/', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  updatePack: (id, data) => api.post(`/catalog/parfums/${id}/update_pack/`, data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  uploadImage: (id, formData) => api.post(`/catalog/parfums/${id}/upload_image/`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  getParfums: (params) => cachedGet('/catalog/parfums/', { params: { include_inactive: 'true', ...params } }, 60000),
+  createParfum: async (data) => {
+    const res = await api.post('/catalog/parfums/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
+  updateParfum: async (id, data) => {
+    const res = await api.patch(`/catalog/parfums/${id}/`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
+  deleteParfum: async (id) => {
+    const res = await api.delete(`/catalog/parfums/${id}/`)
+    clearApiCache()
+    return res
+  },
+  createPack: async (data) => {
+    const res = await api.post('/catalog/parfums/create_pack/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
+  updatePack: async (id, data) => {
+    const res = await api.post(`/catalog/parfums/${id}/update_pack/`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
+  uploadImage: async (id, formData) => {
+    const res = await api.post(`/catalog/parfums/${id}/upload_image/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
   // Formats
-  getFormats: (params) => api.get('/catalog/formats/', { params }),
-  createFormat: (data) => api.post('/catalog/formats/', data),
-  updateFormat: (id, data) => api.patch(`/catalog/formats/${id}/`, data),
-  deleteFormat: (id) => api.delete(`/catalog/formats/${id}/`),
-  bulkUpdateStock: (updates) => api.post('/catalog/formats/bulk_update_stock/', updates),
+  getFormats: (params) => cachedGet('/catalog/formats/', { params }, 60000),
+  createFormat: async (data) => {
+    const res = await api.post('/catalog/formats/', data)
+    clearApiCache()
+    return res
+  },
+  updateFormat: async (id, data) => {
+    const res = await api.patch(`/catalog/formats/${id}/`, data)
+    clearApiCache()
+    return res
+  },
+  deleteFormat: async (id) => {
+    const res = await api.delete(`/catalog/formats/${id}/`)
+    clearApiCache()
+    return res
+  },
+  bulkUpdateStock: async (updates) => {
+    const res = await api.post('/catalog/formats/bulk_update_stock/', updates)
+    clearApiCache()
+    return res
+  },
   // Marques
-  getMarques: () => api.get('/catalog/marques/'),
-  createMarque: (data) => api.post('/catalog/marques/', data),
+  getMarques: () => cachedGet('/catalog/marques/'),
+  createMarque: async (data) => {
+    const res = await api.post('/catalog/marques/', data)
+    clearApiCache()
+    return res
+  },
   // Collections
-  getCollections: (params) => api.get('/catalog/collections/', { params }),
-  createCollection: (data) => api.post('/catalog/collections/', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  updateCollection: (id, data) => api.patch(`/catalog/collections/${id}/`, data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  deleteCollection: (id) => api.delete(`/catalog/collections/${id}/`),
-  assignParfumsToCollection: (id, parfum_ids) => api.post(`/catalog/collections/${id}/assign_parfums/`, { parfum_ids }),
+  getCollections: (params) => cachedGet('/catalog/collections/', { params }, 60000),
+  createCollection: async (data) => {
+    const res = await api.post('/catalog/collections/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
+  updateCollection: async (id, data) => {
+    const res = await api.patch(`/catalog/collections/${id}/`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    clearApiCache()
+    return res
+  },
+  deleteCollection: async (id) => {
+    const res = await api.delete(`/catalog/collections/${id}/`)
+    clearApiCache()
+    return res
+  },
+  assignParfumsToCollection: async (id, parfum_ids) => {
+    const res = await api.post(`/catalog/collections/${id}/assign_parfums/`, { parfum_ids })
+    clearApiCache()
+    return res
+  },
   // Commandes
   getCommandes: (params) => api.get('/orders/commandes/', { params }),
   getCommande: (id) => api.get(`/orders/commandes/${id}/`),
-  updateCommande: (id, data) => api.patch(`/orders/commandes/${id}/`, data),
-  deleteCommande: (id) => api.delete(`/orders/commandes/${id}/`),
+  updateCommande: async (id, data) => {
+    const res = await api.patch(`/orders/commandes/${id}/`, data)
+    clearApiCache()
+    return res
+  },
+  deleteCommande: async (id) => {
+    const res = await api.delete(`/orders/commandes/${id}/`)
+    clearApiCache()
+    return res
+  },
   // Contact messages
   getMessages: (params) => api.get('/orders/contact/', { params }),
   updateMessage: (id, data) => api.patch(`/orders/contact/${id}/`, data),

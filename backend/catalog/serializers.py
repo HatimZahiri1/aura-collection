@@ -35,6 +35,13 @@ class CollectionSerializer(serializers.ModelSerializer):
         return obj.parfums.filter(actif=True).count()
 
 
+class CollectionSimpleSerializer(serializers.ModelSerializer):
+    """Serializer ultra-léger pour éviter les requêtes N+1 de comptage."""
+    class Meta:
+        model = Collection
+        fields = ['id', 'nom', 'slug', 'description', 'image', 'actif', 'ordre']
+
+
 class FormatSerializer(serializers.ModelSerializer):
     type_format_display = serializers.CharField(source='get_type_format_display', read_only=True)
     parfum_nom = serializers.CharField(source='parfum.nom', read_only=True)
@@ -74,7 +81,7 @@ class ParfumListSerializer(serializers.ModelSerializer):
     en_stock = serializers.BooleanField(read_only=True)
     genre_display = serializers.CharField(source='get_genre_display', read_only=True)
     famille_display = serializers.CharField(source='get_famille_olfactive_display', read_only=True)
-    collections_detail = CollectionSerializer(source='collections', many=True, read_only=True)
+    collections_detail = CollectionSimpleSerializer(source='collections', many=True, read_only=True)
     parfums_inclus_detail = ParfumMiniSerializer(source='parfums_inclus', many=True, read_only=True)
     formats = FormatSerializer(many=True, read_only=True)
     has_promo = serializers.BooleanField(read_only=True)
@@ -96,7 +103,7 @@ class ParfumDetailSerializer(serializers.ModelSerializer):
     marque_nom = serializers.CharField(source='marque.nom', read_only=True)
     formats = FormatSerializer(many=True, read_only=True)
     images = ParfumImageSerializer(many=True, read_only=True)
-    collections_detail = CollectionSerializer(source='collections', many=True, read_only=True)
+    collections_detail = CollectionSimpleSerializer(source='collections', many=True, read_only=True)
     parfums_inclus_detail = ParfumMiniSerializer(source='parfums_inclus', many=True, read_only=True)
     genre_display = serializers.CharField(source='get_genre_display', read_only=True)
     famille_display = serializers.CharField(source='get_famille_olfactive_display', read_only=True)

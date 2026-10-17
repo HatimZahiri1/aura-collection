@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import ScrollToTop from './components/ScrollToTop'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
+import { catalogAPI } from './api/client'
 import HomePage from './pages/HomePage'
 import CataloguePage from './pages/CataloguePage'
 import ContactPage from './pages/ContactPage'
@@ -29,6 +31,13 @@ function PublicLayout({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Préchargement en arrière-plan dès l'arrivée sur le site : navigation 100% instantanée (0ms)
+    catalogAPI.getParfums()
+    catalogAPI.getCollections()
+    catalogAPI.getMarques()
+  }, [])
+
   return (
     <>
       <ScrollToTop />

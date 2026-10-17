@@ -39,7 +39,9 @@ class MarqueViewSet(viewsets.ModelViewSet):
 
 
 class ParfumViewSet(viewsets.ModelViewSet):
-    queryset = Parfum.objects.select_related('marque').prefetch_related('formats', 'images')
+    queryset = Parfum.objects.select_related('marque').prefetch_related(
+        'formats', 'images', 'collections', 'parfums_inclus', 'parfums_inclus__marque'
+    )
     permission_classes = [IsAdminOrReadOnly]
     filterset_class = ParfumFilter
     search_fields = ['nom', 'marque__nom', 'description', 'notes_tete', 'notes_coeur', 'notes_fond']
@@ -97,6 +99,12 @@ class ParfumViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(is_promo=False).exclude(formats__prix_promo__isnull=False, formats__prix_promo__gt=0).distinct()
 
         return qs
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        res = super().finalize_response(request, response, *args, **kwargs)
+        if request.method in ('GET', 'HEAD') and not (request.user and request.user.is_staff):
+            res['Cache-Control'] = 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
+        return res
 
     @action(detail=False, methods=['get'])
     def featured(self, request):
