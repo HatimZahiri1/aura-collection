@@ -79,7 +79,7 @@ export const catalogAPI = {
   getFeatured: () => cachedGet('/catalog/parfums/featured/'),
   getNouveautes: () => cachedGet('/catalog/parfums/nouveautes/'),
   getMarques: () => cachedGet('/catalog/marques/'),
-  getCollections: () => cachedGet('/catalog/collections/'),
+  getCollections: () => api.get('/catalog/collections/'),
 }
 
 // ===== Contact API =====

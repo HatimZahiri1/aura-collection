@@ -65,14 +65,15 @@ export default function CataloguePage() {
 
   const totalPages = Math.ceil(totalCount / 60)
 
-  const [activeCollections, setActiveCollections] = useState(null)
+  const [activeCollections, setActiveCollections] = useState([])
 
   useEffect(() => {
     catalogAPI.getCollections()
       .then((res) => {
         const list = res.data.results || res.data || []
         if (Array.isArray(list)) {
-          setActiveCollections(list)
+          const activeOnly = list.filter((c) => c.actif === true)
+          setActiveCollections(activeOnly)
         }
       })
       .catch(() => {})
@@ -81,13 +82,7 @@ export default function CataloguePage() {
   // Collections AURA dynamiques (uniquement les collections actives)
   const quickCollections = [
     { label: 'Tous les produits', slug: '' },
-    ...(activeCollections !== null
-      ? activeCollections.map((c) => ({ label: c.nom, slug: c.slug }))
-      : [
-          { label: 'Gel Parfum Homme', slug: 'gel-parfum-homme' },
-          { label: 'Gel Parfum Femme', slug: 'gel-parfum-femme' },
-          { label: 'Packs Spéciaux', slug: 'packs-speciaux' },
-        ]),
+    ...activeCollections.map((c) => ({ label: c.nom, slug: c.slug })),
   ]
 
   const sortOptions = [

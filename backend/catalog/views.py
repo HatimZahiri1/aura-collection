@@ -561,10 +561,8 @@ class CollectionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         include_inactive = self.request.query_params.get('include_inactive')
-        is_admin = bool(self.request.user and (self.request.user.is_staff or self.request.user.is_superuser))
         show_inactive = (
             str(include_inactive).lower() in ['true', '1']
-            or is_admin
             or self.action in ['update', 'partial_update', 'destroy']
         )
         if not show_inactive:

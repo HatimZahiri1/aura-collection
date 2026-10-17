@@ -78,7 +78,8 @@ export default function Navbar() {
       .then((res) => {
         const list = res.data.results || res.data || []
         if (Array.isArray(list)) {
-          setNavbarCollections(list)
+          const activeOnly = list.filter((c) => c.actif === true)
+          setNavbarCollections(activeOnly)
         }
       })
       .catch(() => {})

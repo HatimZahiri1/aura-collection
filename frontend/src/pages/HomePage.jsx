@@ -31,7 +31,7 @@ export default function HomePage() {
     },
   ]
 
-  const [collections, setCollections] = useState(defaultCollections)
+  const [collections, setCollections] = useState([])
 
   const imageMap = {
     'gel-parfum-homme': '/gels/bleu-chanel.jpeg',
@@ -48,8 +48,9 @@ export default function HomePage() {
       .then((res) => {
         const data = res.data.results || res.data
         if (Array.isArray(data)) {
-          // Show ALL active collections dynamically
-          const merged = data.map((c) => ({
+          // Ne garder strictement que les collections actives (actif === true)
+          const activeOnly = data.filter((c) => c.actif === true)
+          const merged = activeOnly.map((c) => ({
             id: c.id,
             slug: c.slug,
             title: c.nom.toUpperCase(),
