@@ -16,8 +16,8 @@ load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-u+nxg-)&^%7w9=4=h-ic9p10u)faw91mv%^-n!j#yk*p&7uhru')
 
-# Désactiver DEBUG en production (Vercel)
-DEBUG = os.environ.get('VERCEL', '') == ''
+# Temporairement activer DEBUG pour diagnostiquer
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
