@@ -1,9 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { catalogAPI } from '../api/client'
 
 export default function HomePage() {
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.defaultMuted = true
+      videoRef.current.muted = true
+      videoRef.current.play().catch(() => {})
+    }
+  }, [])
   const defaultCollections = [
     {
       id: 'gel-parfum-homme',
@@ -70,15 +79,19 @@ export default function HomePage() {
       {/* 1. Hero Banner: Pleine largeur, vidéo d'ambiance en boucle infinie */}
       <section className="relative w-full min-h-[480px] sm:h-[520px] lg:h-[600px] py-12 sm:py-0 overflow-hidden bg-[#0f3d38] flex items-center justify-center">
         {/* Background Vidéo en boucle infinie */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden bg-[#0f3d38]">
           <video
+            ref={videoRef}
             autoPlay
             loop
             muted
             playsInline
+            preload="auto"
+            poster="/login-bg-poster.jpg"
             className="w-full h-full object-cover object-center scale-105 brightness-[0.78] transition-transform duration-1000"
-            src="/login-bg.mp4"
-          />
+          >
+            <source src="/login-bg.mp4" type="video/mp4" />
+          </video>
           {/* Dégradé émeraude lumineux pour un fond plus clair et lisible */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0f3d38]/80 via-[#134d47]/50 to-[#134d47]/30" />
           <div className="absolute inset-0 bg-[#2fb49c]/15 mix-blend-overlay" />

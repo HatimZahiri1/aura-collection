@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { adminAPI } from '../../api/client'
@@ -9,6 +9,15 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.defaultMuted = true
+      videoRef.current.muted = true
+      videoRef.current.play().catch(() => {})
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -27,16 +36,20 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center px-4 py-12 overflow-hidden">
+    <div className="min-h-screen relative flex items-center justify-center px-4 py-12 overflow-hidden bg-[#0f3d38]">
       {/* Vidéo d'arrière-plan en boucle infinie */}
       <video
+        ref={videoRef}
         autoPlay
         loop
         muted
         playsInline
+        preload="auto"
+        poster="/login-bg-poster.jpg"
         className="absolute inset-0 w-full h-full object-cover z-0"
-        src="/login-bg.mp4"
-      />
+      >
+        <source src="/login-bg.mp4" type="video/mp4" />
+      </video>
 
       {/* Overlay sombre pour lisibilité */}
       <div className="absolute inset-0 bg-black/55 z-[1]" />
