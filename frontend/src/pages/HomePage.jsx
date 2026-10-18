@@ -68,7 +68,7 @@ export default function HomePage() {
   return (
     <div className="bg-[#f4faf8] pb-16">
       {/* 1. Hero Banner: Pleine largeur, vidéo d'ambiance en boucle infinie */}
-      <section className="relative w-full min-h-[480px] sm:h-[520px] lg:h-[600px] py-12 sm:py-0 overflow-hidden bg-[#082522] flex items-center justify-center">
+      <section className="relative w-full min-h-[480px] sm:h-[520px] lg:h-[600px] py-12 sm:py-0 overflow-hidden bg-[#0f3d38] flex items-center justify-center">
         {/* Background Vidéo en boucle infinie */}
         <div className="absolute inset-0 overflow-hidden">
           <video
@@ -76,12 +76,12 @@ export default function HomePage() {
             loop
             muted
             playsInline
-            className="w-full h-full object-cover object-center scale-105 brightness-[0.55] transition-transform duration-1000"
+            className="w-full h-full object-cover object-center scale-105 brightness-[0.78] transition-transform duration-1000"
             src="/login-bg.mp4"
           />
-          {/* Dégradé émeraude et noir luxueux pour une lisibilité parfaite */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#082522] via-[#082522]/70 to-[#082522]/40" />
-          <div className="absolute inset-0 bg-[#0f3d38]/30 mix-blend-multiply" />
+          {/* Dégradé émeraude lumineux pour un fond plus clair et lisible */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f3d38]/80 via-[#134d47]/50 to-[#134d47]/30" />
+          <div className="absolute inset-0 bg-[#2fb49c]/15 mix-blend-overlay" />
         </div>
 
         {/* Contenu textuel centré sur l'image */}
