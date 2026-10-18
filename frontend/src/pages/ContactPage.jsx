@@ -40,6 +40,11 @@ export default function ContactPage() {
         text: 'Votre message a bien été envoyé ! Votre application WhatsApp s’ouvre pour échanger directement avec notre équipe.',
         waUrl: waUrl,
       })
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      } catch {
+        window.scrollTo(0, 0)
+      }
       window.open(waUrl, '_blank')
       setForm({ nom: '', email: '', telephone: '', message: '' })
     }

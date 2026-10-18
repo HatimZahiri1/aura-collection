@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ordersAPI } from '../api/client'
@@ -18,6 +18,34 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
+
+  // Réinitialiser systématiquement le défilement au sommet de la page dès la confirmation de commande
+  useEffect(() => {
+    if (success) {
+      const resetToTop = () => {
+        try {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        } catch {
+          window.scrollTo(0, 0)
+        }
+        if (document.documentElement) document.documentElement.scrollTop = 0
+        if (document.body) document.body.scrollTop = 0
+        const root = document.getElementById('root')
+        if (root) root.scrollTop = 0
+      }
+      resetToTop()
+      const rafId = requestAnimationFrame(resetToTop)
+      const t1 = setTimeout(resetToTop, 10)
+      const t2 = setTimeout(resetToTop, 50)
+      const t3 = setTimeout(resetToTop, 150)
+      return () => {
+        cancelAnimationFrame(rafId)
+        clearTimeout(t1)
+        clearTimeout(t2)
+        clearTimeout(t3)
+      }
+    }
+  }, [success])
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -99,6 +127,17 @@ export default function CheckoutPage() {
         waUrl: waOrderUrl,
       })
       clearCart()
+
+      // Défilement forcé et immédiat tout en haut à partir de la navbar
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      } catch {
+        window.scrollTo(0, 0)
+      }
+      if (document.documentElement) document.documentElement.scrollTop = 0
+      if (document.body) document.body.scrollTop = 0
+      window.dispatchEvent(new CustomEvent('aura:scroll-to-top'))
+
       window.open(waOrderUrl, '_blank')
     } catch (err) {
       const detail = err.response?.data
@@ -123,11 +162,11 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#f4faf8] py-16 px-4 flex items-center justify-center">
+      <div className="min-h-[75vh] bg-[#f4faf8] pt-4 sm:pt-8 pb-16 px-4 flex items-start justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl border border-[#d4e8e3] shadow-xl p-8 md:p-12 text-center max-w-lg mx-auto"
+          className="bg-white rounded-3xl border border-[#d4e8e3] shadow-xl p-6 sm:p-8 md:p-12 text-center max-w-lg mx-auto w-full"
         >
           {/* Animated check badge */}
           <div className="w-20 h-20 rounded-full bg-emerald-50 border-2 border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-sm">
