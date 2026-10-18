@@ -64,6 +64,15 @@ export default function ProductDetailPage() {
     parfum?.parfums_inclus_detail?.length === 3
   ) ? 3 : (isPack ? 3 : 0)
 
+  const availableStock = selectedFormat?.stock ?? (parfum?.en_stock ? 10 : 0)
+  const isOutOfStock = availableStock <= 0
+  const isLowStock = availableStock > 0 && availableStock <= 5
+
+  const getGelStock = (gel) => {
+    const f250 = gel.formats?.find(f => f.type_format === 'flacon_250') || gel.formats?.[0]
+    return f250?.stock ?? (gel.en_stock ? 10 : 0)
+  }
+
   // Ajuster si l'utilisateur change de format (ex: passe de pack 4 à pack 3)
   useEffect(() => {
     if (isPack && selectedFragrances.length > targetCount) {
@@ -71,15 +80,52 @@ export default function ProductDetailPage() {
     }
   }, [targetCount, isPack])
 
+  // Ajuster la quantité si elle dépasse le stock disponible
+  useEffect(() => {
+    if (availableStock > 0 && quantity > availableStock) {
+      setQuantity(availableStock)
+    } else if (availableStock === 0 && quantity > 1) {
+      setQuantity(1)
+    }
+  }, [availableStock, selectedFormat])
+
   const isPackComplete = !isPack || (selectedFragrances.length === targetCount)
 
-  // Remplir d'un clic avec la sélection recommandée (1 de chaque parfum)
+  // Remplir d'un clic avec la sélection recommandée (uniquement les gels disponibles en stock)
   const handleFillRecommended = () => {
-    if (catalogGels.length > 0) {
-      const recommended = catalogGels.slice(0, targetCount).map(g => g.nom)
-      setSelectedFragrances(recommended)
+    const inStockGels = catalogGels.filter(g => getGelStock(g) > 0)
+    if (inStockGels.length === 0) {
+      setPackSelectionError('Aucun gel douche individuel n\'est actuellement disponible en stock pour ce pack.')
+      return
+    }
+
+    const recommended = []
+    // 1ère passe: essayer 1 de chaque senteur disponible
+    for (const g of inStockGels) {
+      if (recommended.length >= targetCount) break
+      const gStock = getGelStock(g)
+      const countInRec = recommended.filter(name => name === g.nom).length
+      if (countInRec < gStock) {
+        recommended.push(g.nom)
+      }
+    }
+
+    // 2ème passe si besoin pour compléter jusqu'à targetCount avec les gels disponibles
+    while (recommended.length < targetCount) {
+      const availableGel = inStockGels.find(g => {
+        const countInRec = recommended.filter(name => name === g.nom).length
+        return countInRec < getGelStock(g)
+      })
+      if (!availableGel) break
+      recommended.push(availableGel.nom)
+    }
+
+    if (recommended.length < targetCount) {
+      setPackSelectionError(`Stock global insuffisant pour composer un pack complet de ${targetCount} flacons (${recommended.length} disponibles).`)
+    } else {
       setPackSelectionError('')
     }
+    setSelectedFragrances(recommended)
   }
 
   // Réinitialiser les flacons choisis
@@ -88,9 +134,23 @@ export default function ProductDetailPage() {
     setPackSelectionError('')
   }
 
-  // Ajouter un gel dans le prochain flacon vide
+  // Ajouter un gel dans le prochain flacon vide en vérifiant son stock individuel
   const handleAddFragrance = (fragranceNom) => {
     setPackSelectionError('')
+    const matched = catalogGels.find(g => g.nom === fragranceNom)
+    const gelStock = matched ? getGelStock(matched) : 10
+
+    if (gelStock <= 0) {
+      setPackSelectionError(`Le parfum "${fragranceNom}" est en rupture de stock et ne peut pas être ajouté au pack.`)
+      return
+    }
+
+    const currentCount = selectedFragrances.filter(f => f === fragranceNom).length
+    if (currentCount >= gelStock) {
+      setPackSelectionError(`Stock insuffisant : vous avez déjà sélectionné les ${gelStock} flacon(s) disponible(s) pour "${fragranceNom}".`)
+      return
+    }
+
     if (selectedFragrances.length < targetCount) {
       setSelectedFragrances(prev => [...prev, fragranceNom])
     } else {
@@ -117,7 +177,7 @@ export default function ProductDetailPage() {
     : selectedFormat ? parseFloat(selectedFormat.prix) : 0
 
   const handleAddToCart = () => {
-    if (!selectedFormat) return
+    if (!selectedFormat || isOutOfStock) return
     if (isPack && !isPackComplete) {
       const remaining = targetCount - selectedFragrances.length
       setPackSelectionError(`Veuillez choisir encore ${remaining} gel(s) douche pour compléter votre pack de ${targetCount} flacons avant de l'ajouter au panier.`)
@@ -131,7 +191,7 @@ export default function ProductDetailPage() {
   }
 
   const handleWhatsAppOrder = () => {
-    if (!selectedFormat) return
+    if (!selectedFormat || isOutOfStock) return
     if (isPack && !isPackComplete) {
       const remaining = targetCount - selectedFragrances.length
       setPackSelectionError(`Veuillez choisir vos ${targetCount} gels douche avant de finaliser la commande via WhatsApp (reste ${remaining} flacon(s)).`)
@@ -263,14 +323,27 @@ export default function ProductDetailPage() {
                       </span>
                     </>
                   ) : (
-                    <>
-                      <span className="text-2xl sm:text-3xl font-extrabold text-[#0f3d38]">
-                        {selectedFormat ? `${parseFloat(selectedFormat.prix).toFixed(0)} DH` : '89 DH'}
-                      </span>
-                      <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-0.5 sm:py-1 rounded-full">
-                        En stock
-                      </span>
-                    </>
+                    <span className="text-2xl sm:text-3xl font-extrabold text-[#0f3d38]">
+                      {selectedFormat ? `${parseFloat(selectedFormat.prix).toFixed(0)} DH` : '89 DH'}
+                    </span>
+                  )}
+
+                  {/* Stock Status Pill */}
+                  {isOutOfStock ? (
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                      Rupture de stock
+                    </span>
+                  ) : isLowStock ? (
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-300 px-2.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Stock faible : plus que {availableStock} restant{availableStock > 1 ? 's' : ''} !
+                    </span>
+                  ) : (
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      En stock ({availableStock} disponibles)
+                    </span>
                   )}
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1">
@@ -457,33 +530,55 @@ export default function ProductDetailPage() {
                         {catalogGels
                           .filter(g => fragranceFilter === 'all' || g.genre === fragranceFilter)
                           .map((g) => {
+                            const gelStock = getGelStock(g)
+                            const isGelOutOfStock = gelStock <= 0
                             const countInPack = selectedFragrances.filter(f => f === g.nom).length
+                            const isGelMaxed = countInPack >= gelStock
                             const isAtCapacity = selectedFragrances.length >= targetCount
+                            const isDisabled = isGelOutOfStock || isGelMaxed || (isAtCapacity && countInPack === 0)
 
                             return (
                               <button
                                 type="button"
                                 key={g.id}
+                                disabled={isDisabled}
                                 onClick={() => handleAddFragrance(g.nom)}
-                                className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl border text-left transition-all cursor-pointer bg-white ${
-                                  countInPack > 0
-                                    ? 'border-[#0f3d38] ring-2 ring-[#0f3d38]/10 shadow-xs'
-                                    : 'border-gray-200 hover:border-[#2fb49c] hover:shadow-xs'
+                                className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl border text-left transition-all ${
+                                  isGelOutOfStock
+                                    ? 'border-gray-200 bg-gray-50/80 opacity-60 cursor-not-allowed'
+                                    : isGelMaxed && countInPack > 0
+                                    ? 'border-amber-300 bg-amber-50/30 cursor-not-allowed'
+                                    : countInPack > 0
+                                    ? 'border-[#0f3d38] ring-2 ring-[#0f3d38]/10 shadow-xs bg-white cursor-pointer'
+                                    : isAtCapacity
+                                    ? 'border-gray-200 bg-white opacity-60 cursor-not-allowed'
+                                    : 'border-gray-200 hover:border-[#2fb49c] hover:shadow-xs bg-white cursor-pointer'
                                 }`}
                               >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                                     {g.photo_principale && (
-                                      <img src={g.photo_principale} alt="" className="w-full h-full object-cover" />
+                                      <img src={g.photo_principale} alt="" className={`w-full h-full object-cover ${isGelOutOfStock ? 'grayscale' : ''}`} />
                                     )}
                                   </div>
                                   <div className="min-w-0">
                                     <span className="text-xs font-bold text-[#0f3d38] block truncate">
                                       {g.nom}
                                     </span>
-                                    <span className="text-[10px] text-gray-400 uppercase font-medium">
-                                      {g.genre_display || g.genre} • 250ml
-                                    </span>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] text-gray-400 uppercase font-medium">
+                                        {g.genre_display || g.genre} • 250ml
+                                      </span>
+                                      {isGelOutOfStock ? (
+                                        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                                          Rupture
+                                        </span>
+                                      ) : gelStock <= 5 ? (
+                                        <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                                          Reste {gelStock}
+                                        </span>
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </div>
 
@@ -494,11 +589,19 @@ export default function ProductDetailPage() {
                                     </span>
                                   )}
                                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-xl transition-colors ${
-                                    isAtCapacity && countInPack === 0
+                                    isGelOutOfStock
+                                      ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                                      : isGelMaxed && countInPack > 0
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : isAtCapacity && countInPack === 0
                                       ? 'bg-gray-100 text-gray-400'
                                       : 'bg-[#f0fbf8] text-[#0f3d38] border border-[#d4e8e3] group-hover:bg-[#2fb49c]'
                                   }`}>
-                                    + Ajouter
+                                    {isGelOutOfStock
+                                      ? 'Épuisé'
+                                      : isGelMaxed && countInPack > 0
+                                      ? 'Stock max'
+                                      : '+ Ajouter'}
                                   </span>
                                 </div>
                               </button>
@@ -534,6 +637,9 @@ export default function ProductDetailPage() {
                       {parfum.formats.map((fmt) => {
                         const fmtHasPromo = fmt.prix_promo && parseFloat(fmt.prix_promo) > 0 && parseFloat(fmt.prix_promo) < parseFloat(fmt.prix)
                         const isSelected = selectedFormat?.id === fmt.id
+                        const fmtStock = fmt.stock ?? 0
+                        const fmtOutOfStock = fmtStock <= 0
+                        const fmtLowStock = fmtStock > 0 && fmtStock <= 5
 
                         return (
                           <button
@@ -542,6 +648,8 @@ export default function ProductDetailPage() {
                             className={`p-3 rounded-2xl border text-center transition-all cursor-pointer relative ${
                               isSelected
                                 ? 'border-[#0f3d38] bg-[#0f3d38] text-white shadow-md'
+                                : fmtOutOfStock
+                                ? 'border-gray-200 bg-gray-50/70 text-gray-400 opacity-60'
                                 : fmtHasPromo
                                 ? 'border-rose-200 bg-rose-50/40 text-gray-800 hover:border-rose-400'
                                 : 'border-[#d4e8e3] bg-white text-gray-700 hover:border-[#2fb49c]'
@@ -550,7 +658,7 @@ export default function ProductDetailPage() {
                             <div className="text-xs font-bold uppercase tracking-wide">
                               {formatLabels[fmt.type_format] || fmt.type_format}
                             </div>
-                            <div className="mt-1 flex items-baseline justify-center gap-1.5">
+                            <div className="mt-1 flex items-baseline justify-center gap-1.5 flex-wrap">
                               {fmtHasPromo ? (
                                 <>
                                   <span className={`text-xs font-black ${isSelected ? 'text-white' : 'text-rose-600'}`}>
@@ -565,6 +673,15 @@ export default function ProductDetailPage() {
                                   {parseFloat(fmt.prix).toFixed(0)} DH
                                 </span>
                               )}
+                              {fmtOutOfStock ? (
+                                <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                                  Épuisé
+                                </span>
+                              ) : fmtLowStock ? (
+                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${isSelected ? 'text-amber-200 bg-amber-900/40' : 'text-amber-700 bg-amber-50 border border-amber-200'}`}>
+                                  Reste {fmtStock}
+                                </span>
+                              ) : null}
                             </div>
                           </button>
                         )
@@ -575,59 +692,108 @@ export default function ProductDetailPage() {
 
                 {/* Quantity */}
                 <div className="mt-6">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
-                    Quantité :
-                  </label>
-                  <div className="flex items-center border border-[#d4e8e3] rounded-full overflow-hidden w-32 bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
+                      Quantité :
+                    </label>
+                    {isOutOfStock ? (
+                      <span className="text-[11px] font-bold text-rose-600">
+                        Produit épuisé
+                      </span>
+                    ) : isLowStock ? (
+                      <span className="text-[11px] font-bold text-amber-600">
+                        Seulement {availableStock} disponible{availableStock > 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-gray-400">
+                        Stock : {availableStock} unités
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center border border-[#d4e8e3] rounded-full overflow-hidden w-32 bg-white shadow-2xs">
                     <button
+                      type="button"
+                      disabled={isOutOfStock || quantity <= 1}
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base cursor-pointer"
+                      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base cursor-pointer"
                     >
                       −
                     </button>
                     <span className="flex-1 text-center font-bold text-sm text-[#0f3d38]">
-                      {quantity}
+                      {isOutOfStock ? 0 : quantity}
                     </span>
                     <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base cursor-pointer"
+                      type="button"
+                      disabled={isOutOfStock || quantity >= availableStock}
+                      onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
+                      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base cursor-pointer"
                     >
                       +
                     </button>
                   </div>
+                  {quantity >= availableStock && availableStock > 0 && (
+                    <p className="text-[11px] font-semibold text-amber-700 mt-1.5 flex items-center gap-1">
+                      <span>⚠️ Quantité maximale disponible atteinte ({availableStock})</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
                 <div className="mt-8 space-y-3">
-                  <button
-                    onClick={handleAddToCart}
-                    className={`w-full py-4 text-xs font-bold uppercase tracking-widest rounded-full transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
-                      isPack && !isPackComplete
-                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                        : 'bg-[#0f3d38] hover:bg-[#2fb49c] text-white'
-                    }`}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    <span>
-                      {isPack
-                        ? isPackComplete
-                          ? `Valider mon Pack & Ajouter au Panier • ${parseFloat(activePrice).toFixed(0)} DH`
-                          : `Complétez votre pack (${selectedFragrances.length}/${targetCount} flacons)`
-                        : `Ajouter au panier • ${parseFloat(activePrice).toFixed(0)} DH`}
-                    </span>
-                  </button>
+                  {isOutOfStock ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-4 text-xs font-bold uppercase tracking-widest rounded-full bg-gray-200 text-gray-400 cursor-not-allowed flex items-center justify-center gap-2 shadow-xs"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        <span>Rupture de stock • Produit indisponible</span>
+                      </button>
 
-                  <button
-                    onClick={handleWhatsAppOrder}
-                    className="w-full py-3.5 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                  >
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z" />
-                    </svg>
-                    <span>Commander via WhatsApp</span>
-                  </button>
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-3.5 bg-gray-100 text-gray-400 text-xs font-bold uppercase tracking-widest rounded-full cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <span>Commande impossible (Stock épuisé)</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleAddToCart}
+                        className={`w-full py-4 text-xs font-bold uppercase tracking-widest rounded-full transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
+                          isPack && !isPackComplete
+                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                            : 'bg-[#0f3d38] hover:bg-[#2fb49c] text-white'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        <span>
+                          {isPack
+                            ? isPackComplete
+                              ? `Valider mon Pack & Ajouter au Panier • ${parseFloat(activePrice).toFixed(0)} DH`
+                              : `Complétez votre pack (${selectedFragrances.length}/${targetCount} flacons)`
+                            : `Ajouter au panier • ${parseFloat(activePrice).toFixed(0)} DH`}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={handleWhatsAppOrder}
+                        className="w-full py-3.5 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                      >
+                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z" />
+                        </svg>
+                        <span>Commander via WhatsApp</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 

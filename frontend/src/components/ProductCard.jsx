@@ -61,12 +61,15 @@ export default function ProductCard({ parfum }) {
         : 'Prix sur demande')
 
   const defaultFormat = parfum.formats?.find(f => f.type_format === 'flacon_250') || parfum.formats?.[0]
+  const availableStock = defaultFormat?.stock ?? (parfum.en_stock ? 10 : 0)
+  const isOutOfStock = availableStock <= 0
+  const isLowStock = availableStock > 0 && availableStock <= 5
 
   const handleQuickAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()
     // Packs require mandatory fragrance selection on the product page
-    if (parfum.is_pack) return
+    if (parfum.is_pack || isOutOfStock) return
     if (defaultFormat) {
       addItem(defaultFormat, parfum, 1)
     }
@@ -79,14 +82,14 @@ export default function ProductCard({ parfum }) {
   }
 
   return (
-    <div className="group bg-white rounded-2xl sm:rounded-3xl border border-[#d4e8e3] overflow-hidden shadow-xs hover:shadow-xl hover:border-[#2fb49c]/40 transition-all duration-300 flex flex-col">
+    <div className={`group bg-white rounded-2xl sm:rounded-3xl border border-[#d4e8e3] overflow-hidden shadow-xs hover:shadow-xl hover:border-[#2fb49c]/40 transition-all duration-300 flex flex-col ${isOutOfStock ? 'opacity-90' : ''}`}>
       <Link to={`/parfum/${parfum.id}`} className="block relative aspect-square bg-[#f0fbf8] overflow-hidden">
         {parfum.photo_principale ? (
           <img
             src={parfum.photo_principale}
             alt={parfum.nom}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale-[35%]' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-serif">
@@ -96,7 +99,18 @@ export default function ProductCard({ parfum }) {
 
         {/* Badges */}
         <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 flex flex-col gap-1 z-10">
-          {hasPromo && (
+          {isOutOfStock ? (
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-rose-700 text-white shadow-sm flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+              Rupture de stock
+            </span>
+          ) : isLowStock ? (
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-amber-500 text-white shadow-sm flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Plus que {availableStock} en stock
+            </span>
+          ) : null}
+          {hasPromo && !isOutOfStock && (
             <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-rose-600 text-white shadow-sm flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               Promo
@@ -118,7 +132,7 @@ export default function ProductCard({ parfum }) {
               {genreLabels[parfum.genre] || parfum.genre}
             </span>
           )}
-          {parfum.mis_en_avant && !hasPromo && !parfum.is_pack && (
+          {parfum.mis_en_avant && !hasPromo && !parfum.is_pack && !isOutOfStock && !isLowStock && (
             <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-[#2fb49c] text-white shadow-sm font-semibold">
               Coup de Cœur
             </span>
@@ -151,6 +165,19 @@ export default function ProductCard({ parfum }) {
               Gel Douche Parfumé • 250 ML
             </p>
           )}
+
+          {/* Stock notice */}
+          {isOutOfStock ? (
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-rose-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
+              <span>Rupture de stock</span>
+            </div>
+          ) : isLowStock ? (
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-amber-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span>Stock faible : plus que {availableStock} restant{availableStock > 1 ? 's' : ''}</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Price & Action */}
@@ -184,7 +211,16 @@ export default function ProductCard({ parfum }) {
             )}
           </div>
 
-          {parfum.is_pack ? (
+          {isOutOfStock ? (
+            <button
+              type="button"
+              disabled
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gray-100 border border-gray-200 text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-full cursor-not-allowed shrink-0 flex items-center gap-1 shadow-2xs"
+              title="Produit temporairement indisponible"
+            >
+              <span>Épuisé</span>
+            </button>
+          ) : parfum.is_pack ? (
             <Link
               to={`/parfum/${parfum.id}`}
               className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-[#0f3d38] hover:bg-[#2fb49c] text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-full transition-all flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 cursor-pointer"

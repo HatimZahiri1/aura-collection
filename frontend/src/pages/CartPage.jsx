@@ -13,6 +13,11 @@ export default function CartPage() {
   const total = useCartStore((s) => s.total)
   const count = useCartStore((s) => s.count)
 
+  const hasOutOfStockItems = items.some(item => 
+    (item.format?.stock !== undefined && item.format?.stock !== null && item.format.stock <= 0) ||
+    (item.format?.stock !== undefined && item.format?.stock !== null && item.quantity > item.format.stock)
+  )
+
   const formatPrice = (price) => `${parseFloat(price || 0).toLocaleString('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`
 
   if (items.length === 0) {
@@ -189,22 +194,34 @@ export default function CartPage() {
                     {/* Quantity & Delete */}
                     <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
                       {/* Controls */}
-                      <div className="flex items-center border border-[#d4e8e3] rounded-full overflow-hidden bg-white">
-                        <button
-                          onClick={() => updateQuantity(itemKey, item.quantity - 1)}
-                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-sm cursor-pointer"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center text-xs font-bold text-[#0f3d38]">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(itemKey, item.quantity + 1)}
-                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-sm cursor-pointer"
-                        >
-                          +
-                        </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center border border-[#d4e8e3] rounded-full overflow-hidden bg-white">
+                          <button
+                            onClick={() => updateQuantity(itemKey, item.quantity - 1)}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-sm cursor-pointer"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold text-[#0f3d38]">
+                            {item.quantity}
+                          </span>
+                          <button
+                            disabled={item.format?.stock !== undefined && item.format?.stock !== null && item.quantity >= item.format.stock}
+                            onClick={() => updateQuantity(itemKey, item.quantity + 1)}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-sm cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                        {item.format?.stock !== undefined && item.format?.stock !== null && item.format.stock <= 0 ? (
+                          <span className="text-[10px] text-rose-600 font-bold block">
+                            Rupture de stock
+                          </span>
+                        ) : item.format?.stock !== undefined && item.format?.stock !== null && item.quantity >= item.format.stock ? (
+                          <span className="text-[10px] text-amber-700 font-bold block">
+                            Max atteint ({item.format.stock})
+                          </span>
+                        ) : null}
                       </div>
 
                       {/* Sous-total de la ligne */}
@@ -293,12 +310,30 @@ export default function CartPage() {
                 </p>
               </div>
 
-              <Link
-                to="/commander"
-                className="w-full py-4 bg-[#0f3d38] hover:bg-[#2fb49c] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-all shadow-md hover:shadow-lg text-center block cursor-pointer"
-              >
-                Passer la commande
-              </Link>
+              {hasOutOfStockItems && (
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+                  <svg className="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>Certains articles sont épuisés ou dépassent le stock. Veuillez ajuster votre panier pour commander.</span>
+                </div>
+              )}
+
+              {hasOutOfStockItems ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-gray-200 text-gray-400 text-xs font-bold uppercase tracking-widest rounded-full cursor-not-allowed text-center block"
+                >
+                  Stock insuffisant pour commander
+                </button>
+              ) : (
+                <Link
+                  to="/commander"
+                  className="w-full py-4 bg-[#0f3d38] hover:bg-[#2fb49c] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-all shadow-md hover:shadow-lg text-center block cursor-pointer"
+                >
+                  Passer la commande
+                </Link>
+              )}
 
               <div className="pt-2 border-t border-gray-100 space-y-2 text-[11px] text-gray-500">
                 <div className="flex items-center gap-2">

@@ -74,6 +74,21 @@ export default function CheckoutPage() {
       return
     }
 
+    // Vérification du stock avant soumission
+    for (const item of items) {
+      const stock = item.format?.stock
+      if (stock !== undefined && stock !== null) {
+        if (stock <= 0) {
+          setError(`Le produit "${item.parfum.nom}" est actuellement en rupture de stock. Veuillez le retirer du panier pour valider votre commande.`)
+          return
+        }
+        if (item.quantity > stock) {
+          setError(`Stock insuffisant pour "${item.parfum.nom}" : seulement ${stock} flacon(s) disponible(s) alors que votre commande en contient ${item.quantity}.`)
+          return
+        }
+      }
+    }
+
     setLoading(true)
     try {
       const orderData = {

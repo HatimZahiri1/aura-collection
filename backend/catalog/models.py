@@ -98,6 +98,10 @@ class Parfum(models.Model):
         if formats.exists():
             prix_list = [f.prix_effectif for f in formats if f.prix_effectif is not None]
             return min(prix_list) if prix_list else None
+        all_formats = self.formats.all()
+        if all_formats.exists():
+            prix_list = [f.prix_effectif for f in all_formats if f.prix_effectif is not None]
+            return min(prix_list) if prix_list else None
         return None
 
     @property

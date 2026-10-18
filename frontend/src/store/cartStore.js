@@ -194,6 +194,10 @@ const useCartStore = create((set, get) => ({
 
     if (!format || !parfum) return
 
+    // Vérifier si le format est en rupture de stock
+    const maxStock = (format.stock !== undefined && format.stock !== null) ? format.stock : Infinity
+    if (maxStock <= 0) return
+
     const hasFormatPromo = format.prix_promo && parseFloat(format.prix_promo) > 0 && parseFloat(format.prix_promo) < parseFloat(format.prix)
     const effectivePrice = hasFormatPromo
       ? parseFloat(format.prix_promo)
@@ -225,15 +229,19 @@ const useCartStore = create((set, get) => ({
 
       let newItems
       if (existing) {
+        const nextQty = Math.min(maxStock, existing.quantity + quantity)
         newItems = state.items.map(item => {
           const itemFragranceKey = (item.selectedFragrances && item.selectedFragrances.length > 0)
             ? item.selectedFragrances.slice().sort().join('|')
             : ''
           return `${item.format.id}-${itemFragranceKey}` === itemKey
-            ? { ...item, format: formatToSave, quantity: item.quantity + quantity }
+            ? { ...item, format: formatToSave, quantity: nextQty }
             : item
         })
       } else {
+        const initialQty = Math.min(maxStock, quantity)
+        if (initialQty <= 0) return state
+
         newItems = [...state.items, {
           itemKey,
           format: formatToSave,
@@ -245,7 +253,7 @@ const useCartStore = create((set, get) => ({
             is_promo: parfum.is_promo,
             is_pack: parfum.is_pack,
           },
-          quantity,
+          quantity: initialQty,
           selectedFragrances: selectedFragrances || [],
         }]
       }
@@ -288,11 +296,17 @@ const useCartStore = create((set, get) => ({
 
   updateQuantity: (itemIdentifier, quantity) => {
     set((state) => {
-      const newItems = quantity <= 0
+      const targetItem = state.items.find(item => item.itemKey === itemIdentifier || item.format.id === itemIdentifier)
+      const maxStock = (targetItem?.format?.stock !== undefined && targetItem?.format?.stock !== null)
+        ? targetItem.format.stock
+        : Infinity
+      const safeQty = Math.min(quantity, maxStock)
+
+      const newItems = safeQty <= 0
         ? state.items.filter(item => item.itemKey !== itemIdentifier && item.format.id !== itemIdentifier)
         : state.items.map(item =>
             (item.itemKey === itemIdentifier || item.format.id === itemIdentifier)
-              ? { ...item, quantity }
+              ? { ...item, quantity: safeQty }
               : item
           )
       const metrics = calculateCartMetrics(newItems)

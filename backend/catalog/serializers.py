@@ -50,13 +50,14 @@ class FormatSerializer(serializers.ModelSerializer):
     parfum_photo = serializers.ImageField(source='parfum.photo_principale', read_only=True)
     prix_effectif = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     en_promo = serializers.BooleanField(read_only=True)
+    en_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Format
         fields = [
             'id', 'parfum', 'parfum_nom', 'parfum_genre', 'parfum_marque',
             'parfum_photo', 'type_format', 'type_format_display',
-            'contenance_ml', 'prix', 'prix_promo', 'prix_effectif', 'en_promo', 'stock'
+            'contenance_ml', 'prix', 'prix_promo', 'prix_effectif', 'en_promo', 'stock', 'en_stock'
         ]
 
 

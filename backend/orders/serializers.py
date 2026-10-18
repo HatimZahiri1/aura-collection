@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from .models import Commande, LigneCommande, ContactMessage
-from catalog.models import Format
+from catalog.models import Format, Parfum
 from catalog.serializers import FormatSerializer
 
 
@@ -124,19 +124,76 @@ class CommandeCreateSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("La commande doit contenir au moins un article.")
 
+        # Vérification globale des stocks (flacons seuls et fragrances dans packs)
+        demand_per_format = {}
+        demand_per_perfume = {}
+
         for i, ligne in enumerate(value):
             quantite = int(ligne.get('quantite', 1))
-            fmt = self._resolve_format(ligne, for_update=False)
+            if quantite <= 0:
+                raise serializers.ValidationError(f"Ligne {i+1}: la quantité doit être supérieure à 0.")
 
+            fmt = self._resolve_format(ligne, for_update=False)
             if not fmt:
                 raise serializers.ValidationError(
-                    f"Ligne {i+1}: produit indisponible actuellement."
+                    f"Ligne {i+1}: produit ou format indisponible actuellement."
                 )
 
-            # Vérifier ou réajuster le stock pour ne jamais bloquer une commande client
-            if fmt.stock < quantite:
-                fmt.stock = quantite + 10
-                fmt.save(update_fields=['stock'])
+            # Accumuler la demande sur le format direct
+            if fmt.id not in demand_per_format:
+                demand_per_format[fmt.id] = {'fmt': fmt, 'qty': 0}
+            demand_per_format[fmt.id]['qty'] += quantite
+
+            is_pack = bool(fmt.parfum.is_pack or 'pack' in (fmt.type_format or '').lower())
+            if not is_pack:
+                # Flacon individuel
+                pid = fmt.parfum_id
+                if pid not in demand_per_perfume:
+                    demand_per_perfume[pid] = {'parfum': fmt.parfum, 'qty': 0}
+                demand_per_perfume[pid]['qty'] += quantite
+            else:
+                # Pour les packs, vérifier les fragrances choisies
+                frags = ligne.get('fragrances_choisies') or []
+                if isinstance(frags, str):
+                    frags = [f.strip() for f in frags.split(',') if f.strip()]
+                for frag_name in frags:
+                    if not frag_name:
+                        continue
+                    parfum_obj = Parfum.objects.filter(nom__iexact=frag_name.strip()).first()
+                    if parfum_obj:
+                        pid = parfum_obj.id
+                        if pid not in demand_per_perfume:
+                            demand_per_perfume[pid] = {'parfum': parfum_obj, 'qty': 0}
+                        demand_per_perfume[pid]['qty'] += quantite
+
+        # 1. Vérification des formats commandés
+        for fmt_id, info in demand_per_format.items():
+            fmt = info['fmt']
+            qty = info['qty']
+            if fmt.stock <= 0:
+                raise serializers.ValidationError(
+                    f"Le produit '{fmt.parfum.nom}' ({fmt.get_type_format_display()}) est actuellement en rupture de stock."
+                )
+            if fmt.stock < qty:
+                raise serializers.ValidationError(
+                    f"Stock insuffisant pour '{fmt.parfum.nom}' : seulement {fmt.stock} disponible(s) alors que votre commande en contient {qty}."
+                )
+
+        # 2. Vérification des stocks de chaque parfum (utilisé seul ou dans les packs)
+        for pid, info in demand_per_perfume.items():
+            parfum_obj = info['parfum']
+            qty = info['qty']
+            flacon_fmt = parfum_obj.formats.filter(type_format='flacon_250').first() or parfum_obj.formats.first()
+            if flacon_fmt:
+                if flacon_fmt.stock <= 0:
+                    raise serializers.ValidationError(
+                        f"Le parfum '{parfum_obj.nom}' est en rupture de stock (indisponible seul ou dans un pack)."
+                    )
+                if flacon_fmt.stock < qty:
+                    raise serializers.ValidationError(
+                        f"Stock insuffisant pour le parfum '{parfum_obj.nom}' : seulement {flacon_fmt.stock} flacon(s) disponible(s) en stock (vous en avez commandé {qty} au total)."
+                    )
+
         return value
 
     @transaction.atomic
@@ -167,13 +224,18 @@ class CommandeCreateSerializer(serializers.ModelSerializer):
                 continue
 
             if fmt.stock < quantite:
-                fmt.stock = quantite + 10
-                fmt.save(update_fields=['stock'])
+                raise serializers.ValidationError(
+                    f"Stock insuffisant pour '{fmt.parfum.nom}' : seulement {fmt.stock} restant(s)."
+                )
 
             # Créer la ligne avec les fragrances choisies par le client
-            fragrances = ligne_data.get('fragrances_choisies', '')
-            if isinstance(fragrances, list):
-                fragrances = ', '.join(fragrances)
+            fragrances_raw = ligne_data.get('fragrances_choisies', '')
+            if isinstance(fragrances_raw, list):
+                fragrances_list = fragrances_raw
+                fragrances_str = ', '.join(fragrances_raw)
+            else:
+                fragrances_str = str(fragrances_raw)
+                fragrances_list = [f.strip() for f in fragrances_str.split(',') if f.strip()]
 
             # Prix effectif (si promo)
             has_promo = fmt.prix_promo and fmt.prix_promo > 0 and fmt.prix_promo < fmt.prix
@@ -184,14 +246,27 @@ class CommandeCreateSerializer(serializers.ModelSerializer):
                 format=fmt,
                 quantite=quantite,
                 prix_unitaire=prix_ligne,
-                fragrances_choisies=fragrances or '',
+                fragrances_choisies=fragrances_str or '',
             )
 
-            # Décrémenter le stock
+            # Décrémenter le stock du format commandé
             fmt.stock -= quantite
             fmt.save(update_fields=['stock'])
 
+            # Si c'est un pack, décrémenter aussi le stock de chaque fragrance choisie
             is_pack = bool(fmt.parfum.is_pack or 'pack' in (fmt.type_format or '').lower())
+            if is_pack and fragrances_list:
+                for frag_name in fragrances_list:
+                    p_obj = Parfum.objects.filter(nom__iexact=frag_name.strip()).first()
+                    if p_obj:
+                        frag_fmt = (
+                            Format.objects.select_for_update().filter(parfum=p_obj, type_format='flacon_250').first()
+                            or Format.objects.select_for_update().filter(parfum=p_obj).first()
+                        )
+                        if frag_fmt:
+                            frag_fmt.stock = max(0, frag_fmt.stock - quantite)
+                            frag_fmt.save(update_fields=['stock'])
+
             items_info.append({
                 'is_pack': is_pack,
                 'prix': float(prix_ligne),
