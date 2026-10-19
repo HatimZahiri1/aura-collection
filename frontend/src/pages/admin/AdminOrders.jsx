@@ -12,6 +12,12 @@ export default function AdminOrders() {
   const [orderToDelete, setOrderToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Sélection multiple & Suppression groupée
+  const [selectedOrderIds, setSelectedOrderIds] = useState([])
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkSuccessMessage, setBulkSuccessMessage] = useState('')
+
   // Filtres et Tri
   const [periode, setPeriode] = useState('all') // 'all' | 'jour' | 'semaine' | 'mois'
   const [statutFilter, setStatutFilter] = useState('all') // 'all' | 'en_attente' | 'confirmee' | 'en_livraison' | 'livree' | 'annulee'
@@ -95,6 +101,58 @@ export default function AdminOrders() {
     }
   }
 
+  // Fonctions de sélection multiple & suppression groupée
+  const toggleSelectOrder = (orderId, e) => {
+    if (e) e.stopPropagation()
+    setSelectedOrderIds(prev =>
+      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+    )
+  }
+
+  const handleToggleSelectPage = () => {
+    const pageIds = paginatedCommandes.map(c => c.id)
+    const allPageSelected = pageIds.length > 0 && pageIds.every(id => selectedOrderIds.includes(id))
+    if (allPageSelected) {
+      setSelectedOrderIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const merged = new Set([...selectedOrderIds, ...pageIds])
+      setSelectedOrderIds(Array.from(merged))
+    }
+  }
+
+  const handleSelectAllFiltered = () => {
+    setSelectedOrderIds(filteredCommandes.map(c => c.id))
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedOrderIds([])
+  }
+
+  const handleConfirmBulkDelete = async () => {
+    if (selectedOrderIds.length === 0) return
+    setBulkDeleting(true)
+    try {
+      const count = selectedOrderIds.length
+      await adminAPI.bulkDeleteCommandes(selectedOrderIds)
+      setCommandes(prev => prev.filter(c => !selectedOrderIds.includes(c.id)))
+      if (selectedOrder && selectedOrderIds.includes(selectedOrder.id)) {
+        setSelectedOrder(null)
+      }
+      setSelectedOrderIds([])
+      setShowBulkDeleteModal(false)
+      setBulkSuccessMessage(`${count} commande(s) supprimée(s) avec succès.`)
+      setTimeout(() => setBulkSuccessMessage(''), 5000)
+      if (refreshStats) {
+        refreshStats()
+      }
+    } catch (err) {
+      console.error('Erreur suppression multiple:', err)
+      alert("Une erreur est survenue lors de la suppression des commandes sélectionnées.")
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   const formatPrice = (price) => `${parseFloat(price || 0).toLocaleString('fr-MA')} MAD`
   
   const formatDate = (date) => new Date(date).toLocaleDateString('fr-FR', {
@@ -158,6 +216,13 @@ export default function AdminOrders() {
     return { totalCount, enAttenteCount, chiffreAffaires }
   }, [filteredCommandes])
 
+  // Total des commandes cochées / sélectionnées pour la suppression
+  const selectedOrdersTotal = useMemo(() => {
+    return filteredCommandes
+      .filter(c => selectedOrderIds.includes(c.id))
+      .reduce((acc, c) => acc + parseFloat(c.total || 0), 0)
+  }, [filteredCommandes, selectedOrderIds])
+
   const handleWhatsAppCustomer = (order) => {
     let articlesSummary = ''
     if (order.lignes && order.lignes.length > 0) {
@@ -197,6 +262,31 @@ export default function AdminOrders() {
           Actualiser
         </button>
       </div>
+
+      {/* Alerte Succès Suppression Multiple */}
+      <AnimatePresence>
+        {bulkSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between gap-3 shadow-xs"
+          >
+            <div className="flex items-center gap-2.5">
+              <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{bulkSuccessMessage}</span>
+            </div>
+            <button
+              onClick={() => setBulkSuccessMessage('')}
+              className="text-emerald-700 hover:text-emerald-900 text-sm font-bold cursor-pointer"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 3 Cartes de Synthèse de la Période Active */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -369,22 +459,89 @@ export default function AdminOrders() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Liste des Commandes */}
           <div className="lg:col-span-2 space-y-3">
+            {/* Barre de sélection multiple */}
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-3 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={paginatedCommandes.length > 0 && paginatedCommandes.every(c => selectedOrderIds.includes(c.id))}
+                    onChange={handleToggleSelectPage}
+                    className="w-4 h-4 rounded text-[#0f3d38] border-gray-300 focus:ring-[#2fb49c] cursor-pointer"
+                  />
+                  <span>Sélectionner cette page ({paginatedCommandes.length})</span>
+                </label>
+
+                {filteredCommandes.length > paginatedCommandes.length && (
+                  <button
+                    type="button"
+                    onClick={handleSelectAllFiltered}
+                    className="text-xs text-[#2fb49c] hover:underline font-semibold cursor-pointer"
+                  >
+                    Sélectionner les {filteredCommandes.length} commandes
+                  </button>
+                )}
+              </div>
+
+              {selectedOrderIds.length > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-xs font-bold text-[#0f3d38] bg-[#f0fbf8] px-2.5 py-1 rounded-lg border border-[#d4e8e3]">
+                    {selectedOrderIds.length} sélectionnée{selectedOrderIds.length > 1 ? 's' : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className="text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Supprimer ({selectedOrderIds.length})</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {paginatedCommandes.map((order) => (
               <motion.div
                 key={order.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`bg-white rounded-2xl p-5 border transition-all cursor-pointer shadow-xs hover:shadow-md ${
-                  selectedOrder?.id === order.id
+                  selectedOrderIds.includes(order.id)
+                    ? 'border-[#2fb49c] bg-[#f0fbf8]/50 ring-2 ring-[#2fb49c]/30'
+                    : selectedOrder?.id === order.id
                     ? 'border-[#0f3d38] ring-2 ring-[#0f3d38]/10'
                     : 'border-gray-200/90 hover:border-gray-300'
                 }`}
                 onClick={() => handleViewDetail(order.id)}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-                      <span className="text-sm font-bold text-[#0f3d38]">Commande #{order.id}</span>
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Checkbox de sélection individuelle */}
+                    <div
+                      onClick={(e) => toggleSelectOrder(order.id, e)}
+                      className="pt-0.5 shrink-0"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.includes(order.id)}
+                        onChange={(e) => toggleSelectOrder(order.id, e)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 rounded text-[#0f3d38] border-gray-300 focus:ring-[#2fb49c] cursor-pointer"
+                        aria-label={`Sélectionner la commande #${order.id}`}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-[#0f3d38]">Commande #{order.id}</span>
                       <span className="text-xs font-semibold text-gray-800">{order.nom_client}</span>
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusColors[order.statut] || 'bg-gray-100 text-gray-600'}`}>
                         {statusLabels[order.statut] || order.statut}
@@ -398,7 +555,8 @@ export default function AdminOrders() {
                       <span className="text-gray-400">{formatDate(order.created_at)}</span>
                     </p>
                   </div>
-                  <div className="flex items-start gap-2.5 shrink-0">
+                </div>
+                <div className="flex items-start gap-2.5 shrink-0">
                     <div className="text-right">
                       <p className="text-base font-extrabold text-[#0f3d38]">{formatPrice(order.total)}</p>
                       <p className="text-gray-400 text-[11px]">{order.nombre_articles || 1} article(s)</p>
@@ -714,6 +872,105 @@ export default function AdminOrders() {
                   className="flex-1 py-3 px-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
                   {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Bottom Action Bar for Bulk Delete */}
+      <AnimatePresence>
+        {selectedOrderIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0f3d38] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-4 sm:gap-6 backdrop-blur-md max-w-[95vw]"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-full bg-[#2fb49c] text-white flex items-center justify-center text-xs font-bold">
+                {selectedOrderIds.length}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">
+                {selectedOrderIds.length} commande{selectedOrderIds.length > 1 ? 's' : ''} sélectionnée{selectedOrderIds.length > 1 ? 's' : ''}
+              </span>
+              <span className="text-xs text-white/60 hidden md:inline">
+                ({formatPrice(selectedOrdersTotal)})
+              </span>
+            </div>
+
+            <div className="h-4 w-px bg-white/20 hidden sm:block" />
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDeselectAll}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-rose-900/30 cursor-pointer whitespace-nowrap"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Supprimer la sélection ({selectedOrderIds.length})</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Confirmation de Suppression Multiple */}
+      <AnimatePresence>
+        {showBulkDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !bulkDeleting && setShowBulkDeleteModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 z-10"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+
+              <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+                Supprimer {selectedOrderIds.length} commande{selectedOrderIds.length > 1 ? 's' : ''} ?
+              </h3>
+              <p className="text-xs text-gray-500 text-center mb-6 leading-relaxed">
+                Vous avez sélectionné <strong>{selectedOrderIds.length} commande{selectedOrderIds.length > 1 ? 's' : ''}</strong> pour un montant total de <strong>{formatPrice(selectedOrdersTotal)}</strong>. Ces commandes seront définitivement effacées de la base de données. Cette action est irréversible.
+              </p>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  disabled={bulkDeleting}
+                  className="flex-1 py-3 px-4 rounded-full border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBulkDelete}
+                  disabled={bulkDeleting}
+                  className="flex-1 py-3 px-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {bulkDeleting ? 'Suppression...' : `Supprimer définitivement (${selectedOrderIds.length})`}
                 </button>
               </div>
             </motion.div>

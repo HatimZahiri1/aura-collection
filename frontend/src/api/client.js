@@ -211,6 +211,11 @@ export const adminAPI = {
     clearApiCache()
     return res
   },
+  bulkDeleteCommandes: async (ids) => {
+    const res = await api.post('/orders/commandes/bulk_delete/', { ids })
+    clearApiCache()
+    return res
+  },
   // Contact messages
   getMessages: (params) => api.get('/orders/contact/', { params }),
   updateMessage: (id, data) => api.patch(`/orders/contact/${id}/`, data),

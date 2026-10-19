@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Commande, ContactMessage
 from .serializers import (
@@ -67,6 +68,23 @@ class CommandeViewSet(viewsets.ModelViewSet):
             instance.statut = new_statut
             instance.save(update_fields=['statut', 'updated_at'])
         return Response(CommandeDetailSerializer(instance, context={'request': request}).data)
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def bulk_delete(self, request):
+        """Suppression groupée de plusieurs commandes sélectionnées."""
+        ids = request.data.get('ids', [])
+        if not ids or not isinstance(ids, list):
+            return Response(
+                {'error': "Une liste d'identifiants 'ids' est requise."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        qs = Commande.objects.filter(id__in=ids)
+        count = qs.count()
+        qs.delete()
+        return Response({
+            'detail': f"{count} commande(s) supprimée(s) avec succès.",
+            'deleted_count': count,
+        })
 
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
