@@ -196,8 +196,9 @@ class ParfumViewSet(viewsets.ModelViewSet):
             genre='mixte',
             famille_olfactive='fraiche',
             concentration='gel',
-            description=request.data.get('description', f"Pack exclusif de {len(inclus_objs)} gels douche parfumés 250ml."),
+            description=request.data.get('description', f"Pack exclusif de {count} gels douche parfumés 250ml."),
             is_pack=True,
+            nombre_produits=count,
             mis_en_avant=bool(request.data.get('mis_en_avant', False)),
             actif=True,
             is_promo=is_promo,
@@ -286,6 +287,10 @@ class ParfumViewSet(viewsets.ModelViewSet):
         format_type = request.data.get('format_type')
         nb_produits = request.data.get('nombre_produits')
         count = int(nb_produits) if (nb_produits and str(nb_produits).isdigit()) else parfum.parfums_inclus.count()
+
+        # Always update nombre_produits on the parfum model
+        parfum.nombre_produits = count
+        parfum.save()
 
         prix = request.data.get('prix')
         stock = request.data.get('stock')

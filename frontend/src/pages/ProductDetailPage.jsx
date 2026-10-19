@@ -66,13 +66,15 @@ export default function ProductDetailPage() {
   })
 
   const isPack = Boolean(parfum?.is_pack || selectedFormat?.type_format?.includes('pack'))
+  // nombre_produits from the API is the primary source of truth for pack size
+  const apiPackCount = parfum?.nombre_produits > 0 ? parfum.nombre_produits : null
   const formatPackMatch = selectedFormat?.type_format?.match(/pack_(\d+)/i)
   const formatPackCount = formatPackMatch ? parseInt(formatPackMatch[1], 10) : null
   const inclusCount = parfum?.parfums_inclus_detail?.length || (Array.isArray(parfum?.parfums_inclus) ? parfum.parfums_inclus.length : null)
   const nomMatch = parfum?.nom?.match(/(\d+)\s*(?:gels?|produits?|flacons?|parfums?)/i) || parfum?.nom?.match(/pack.*?(\d+)/i)
   const nomCount = nomMatch ? parseInt(nomMatch[1], 10) : null
 
-  const targetCount = isPack ? (formatPackCount || inclusCount || nomCount || 3) : 0
+  const targetCount = isPack ? (apiPackCount || formatPackCount || inclusCount || nomCount || 3) : 0
 
   const availableStock = selectedFormat?.stock ?? (parfum?.en_stock ? 10 : 0)
   const isOutOfStock = availableStock <= 0

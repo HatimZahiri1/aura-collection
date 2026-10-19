@@ -77,6 +77,7 @@ class Parfum(models.Model):
     actif = models.BooleanField(default=True)
     mis_en_avant = models.BooleanField(default=False, help_text='Mettre en avant sur la page d\'accueil')
     is_pack = models.BooleanField(default=False, help_text='Pack spécial / Coffret')
+    nombre_produits = models.PositiveIntegerField(default=0, help_text='Nombre de produits obligatoires dans ce pack (ex: 2, 3, 4, 5...)')
     parfums_inclus = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='inclus_dans_packs', help_text='Parfums inclus dans ce pack spécial')
     is_promo = models.BooleanField(default=False, help_text='Produit en promotion')
     prix_promo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Prix promo en MAD')
