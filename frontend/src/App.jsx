@@ -18,6 +18,7 @@ import AdminProducts from './pages/admin/AdminProducts'
 import AdminStock from './pages/admin/AdminStock'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminCollections from './pages/admin/AdminCollections'
+import AdminProfile from './pages/admin/AdminProfile'
 
 function PublicLayout({ children }) {
   return (
@@ -66,6 +67,8 @@ export default function App() {
         <Route path="collections" element={<AdminCollections />} />
         <Route path="stock" element={<AdminStock />} />
         <Route path="commandes" element={<AdminOrders />} />
+        <Route path="profil" element={<AdminProfile />} />
+        <Route path="securite" element={<AdminProfile />} />
       </Route>
     </Routes>
     </>

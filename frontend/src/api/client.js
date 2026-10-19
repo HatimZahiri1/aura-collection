@@ -214,6 +214,28 @@ export const adminAPI = {
   // Contact messages
   getMessages: (params) => api.get('/orders/contact/', { params }),
   updateMessage: (id, data) => api.patch(`/orders/contact/${id}/`, data),
+  // Profil & Sécurité Administrateur
+  getProfile: () => api.get('/auth/profile/'),
+  updateProfile: async (data) => {
+    const res = await api.patch('/auth/profile/', data)
+    if (res.data?.access) {
+      localStorage.setItem('access_token', res.data.access)
+    }
+    if (res.data?.refresh) {
+      localStorage.setItem('refresh_token', res.data.refresh)
+    }
+    return res
+  },
+  changePassword: async (data) => {
+    const res = await api.post('/auth/change-password/', data)
+    if (res.data?.access) {
+      localStorage.setItem('access_token', res.data.access)
+    }
+    if (res.data?.refresh) {
+      localStorage.setItem('refresh_token', res.data.refresh)
+    }
+    return res
+  },
 }
 
 export default api

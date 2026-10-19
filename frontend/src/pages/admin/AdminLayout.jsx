@@ -81,6 +81,15 @@ export default function AdminLayout() {
         </svg>
       ),
     },
+    {
+      to: '/admin/profil',
+      label: 'Profil & Sécurité',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      ),
+    },
   ]
 
   const isActive = (item) => {
@@ -221,27 +230,40 @@ export default function AdminLayout() {
             </span>
           </div>
 
-          {/* Quick Stats Badges */}
-          {stats && (
-            <div className="flex items-center gap-1.5 sm:gap-3 text-xs">
-              <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f0fbf8] text-[#0f3d38] font-semibold border border-[#d4e8e3]">
-                <span className="text-gray-500">Produits:</span>
-                <span className="font-bold">{stats.total_parfums}</span>
-              </div>
-              <div className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-[11px] sm:text-xs">
-                <span className="hidden xs:inline">En attente:</span>
-                <span className="xs:hidden">Att:</span>
-                <span className="font-bold">{stats.commandes_en_attente}</span>
-              </div>
-              {stats.rupture_stock > 0 && (
-                <div className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-red-50 text-red-800 border border-red-200 font-semibold text-[11px] sm:text-xs">
-                  <span className="hidden xs:inline">Rupture:</span>
-                  <span className="xs:hidden">Rup:</span>
-                  <span className="font-bold">{stats.rupture_stock}</span>
+          {/* Right Header Area : Stats & User Profile Link */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {stats && (
+              <div className="flex items-center gap-1.5 sm:gap-2.5 text-xs">
+                <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f0fbf8] text-[#0f3d38] font-semibold border border-[#d4e8e3]">
+                  <span className="text-gray-500">Produits:</span>
+                  <span className="font-bold">{stats.total_parfums}</span>
                 </div>
-              )}
-            </div>
-          )}
+                <div className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-[11px] sm:text-xs">
+                  <span className="hidden xs:inline">En attente:</span>
+                  <span className="xs:hidden">Att:</span>
+                  <span className="font-bold">{stats.commandes_en_attente}</span>
+                </div>
+                {stats.rupture_stock > 0 && (
+                  <div className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-red-50 text-red-800 border border-red-200 font-semibold text-[11px] sm:text-xs">
+                    <span className="hidden xs:inline">Rupture:</span>
+                    <span className="xs:hidden">Rup:</span>
+                    <span className="font-bold">{stats.rupture_stock}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Link
+              to="/admin/profil"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#f0fbf8] hover:bg-[#d4e8e3] border border-[#d4e8e3] text-[#0f3d38] transition-all text-xs font-semibold"
+              title="Gérer mon nom d'utilisateur et mot de passe"
+            >
+              <div className="w-5 h-5 rounded-full bg-[#0f3d38] text-white flex items-center justify-center text-[10px] font-bold">
+                A
+              </div>
+              <span className="hidden sm:inline">Mon Compte</span>
+            </Link>
+          </div>
         </div>
 
         {/* Page Content */}
