@@ -4,11 +4,21 @@ import { adminAPI } from '../../api/client'
 
 export default function AdminLayout() {
   const [stats, setStats] = useState(null)
+  const [adminUsername, setAdminUsername] = useState(() => {
+    return localStorage.getItem('admin_username') || 'admin'
+  })
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
   })
   const navigate = useNavigate()
   const location = useLocation()
+
+  const updateAdminUsername = (newUsername) => {
+    if (newUsername) {
+      setAdminUsername(newUsername)
+      localStorage.setItem('admin_username', newUsername)
+    }
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -19,6 +29,14 @@ export default function AdminLayout() {
     adminAPI.getStats()
       .then(res => setStats(res.data))
       .catch(() => navigate('/admin/login'))
+
+    adminAPI.getProfile()
+      .then(res => {
+        if (res.data?.username) {
+          updateAdminUsername(res.data.username)
+        }
+      })
+      .catch(() => {})
   }, [navigate])
 
   // Automatically close sidebar on mobile when navigating
@@ -256,19 +274,19 @@ export default function AdminLayout() {
             <Link
               to="/admin/profil"
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#f0fbf8] hover:bg-[#d4e8e3] border border-[#d4e8e3] text-[#0f3d38] transition-all text-xs font-semibold"
-              title="Gérer mon nom d'utilisateur et mot de passe"
+              title={`Compte administrateur : ${adminUsername}`}
             >
-              <div className="w-5 h-5 rounded-full bg-[#0f3d38] text-white flex items-center justify-center text-[10px] font-bold">
-                A
+              <div className="w-5 h-5 rounded-full bg-[#0f3d38] text-white flex items-center justify-center text-[10px] font-bold uppercase">
+                {adminUsername ? adminUsername.charAt(0) : 'A'}
               </div>
-              <span className="hidden sm:inline">Mon Compte</span>
+              <span className="hidden sm:inline font-mono font-bold tracking-wide">{adminUsername}</span>
             </Link>
           </div>
         </div>
 
         {/* Page Content */}
         <div className="p-3 sm:p-6 lg:p-8 flex-1 w-full min-w-0">
-          <Outlet context={{ stats, refreshStats: () => adminAPI.getStats().then(res => setStats(res.data)) }} />
+          <Outlet context={{ stats, refreshStats: () => adminAPI.getStats().then(res => setStats(res.data)), adminUsername, updateAdminUsername }} />
         </div>
       </main>
     </div>

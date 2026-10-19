@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { adminAPI } from '../../api/client'
 
 export default function AdminProfile() {
+  const outletCtx = useOutletContext() || {}
+
   // Profil state
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileData, setProfileData] = useState({
@@ -37,6 +40,9 @@ export default function AdminProfile() {
       const res = await adminAPI.getProfile()
       setProfileData(res.data)
       setUsernameInput(res.data.username || '')
+      if (res.data?.username) {
+        outletCtx.updateAdminUsername?.(res.data.username)
+      }
     } catch (err) {
       setProfileError("Impossible de charger les données du profil.")
     } finally {
@@ -60,7 +66,9 @@ export default function AdminProfile() {
       const res = await adminAPI.updateProfile({
         username: usernameInput.trim(),
       })
-      setProfileData(res.data.user || { ...profileData, username: usernameInput })
+      const updatedU = res.data.user?.username || usernameInput.trim()
+      setProfileData(res.data.user || { ...profileData, username: updatedU })
+      outletCtx.updateAdminUsername?.(updatedU)
       setProfileSuccess(res.data.detail || "Nom d'utilisateur enregistré avec succès !")
       setTimeout(() => setProfileSuccess(''), 5000)
     } catch (err) {
