@@ -157,7 +157,18 @@ export default function ProductCard({ parfum }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
               <span className="line-clamp-1 font-bold">
-                {parfum.nom?.includes('4') ? '4 fragrances au choix (250ml)' : '3 fragrances au choix (250ml)'}
+                {(() => {
+                  const count = parfum.nombre_produits > 0
+                    ? parfum.nombre_produits
+                    : (() => {
+                        const fmt = parfum.formats?.find(f => f.type_format?.includes('pack'))
+                        const fmtMatch = fmt?.type_format?.match(/pack_(\d+)/i)
+                        if (fmtMatch) return parseInt(fmtMatch[1], 10)
+                        const nameMatch = parfum.nom?.match(/(\d+)/)
+                        return nameMatch ? parseInt(nameMatch[1], 10) : 3
+                      })()
+                  return `${count} fragrances au choix (250ml)`
+                })()}
               </span>
             </div>
           ) : (
