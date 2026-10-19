@@ -32,8 +32,9 @@ export default function AdminProducts() {
   const [packSearch, setPackSearch] = useState('')
   const [packData, setPackData] = useState({
     nom: '',
-    format_type: 'pack_3', // 'pack_3' | 'pack_4' | 'flacon_250'
-    parfums: [], // 2 à 4 IDs
+    format_type: 'pack_3',
+    nombre_produits: 3,
+    parfums: [],
     prix: '',
     stock: 10,
     description: '',
@@ -242,8 +243,9 @@ export default function AdminProducts() {
   // ===== PACK SPÉCIAL HANDLERS =====
   const openNewPackModal = () => {
     setPackData({
-      nom: '',
+      nom: 'Pack Spécial (3 Gels Douche 250ml)',
       format_type: 'pack_3',
+      nombre_produits: 3,
       parfums: [],
       prix: '',
       stock: 10,
@@ -259,17 +261,24 @@ export default function AdminProducts() {
 
   const handleEditPack = (p) => {
     const fmt = p.formats?.[0]
-    let fmtType = (fmt?.type_format === 'pack_4' || p.parfums_inclus?.length === 4) ? 'pack_4' : 'pack_3'
-
     const existingInclus = Array.isArray(p.parfums_inclus_detail) && p.parfums_inclus_detail.length > 0
       ? p.parfums_inclus_detail.map(item => item.id)
       : Array.isArray(p.parfums_inclus)
       ? p.parfums_inclus.map(item => typeof item === 'object' ? item.id : item)
       : []
 
+    // Déterminer la taille du pack (nombre de parfums)
+    const matchNum = fmt?.type_format?.match(/\d+/)?.[0] || p.nom?.match(/\d+/)?.[0]
+    const detectedCount = existingInclus.length > 0
+      ? existingInclus.length
+      : (matchNum ? parseInt(matchNum, 10) : 3)
+
+    const fmtType = fmt?.type_format || `pack_${detectedCount}`
+
     setPackData({
       nom: p.nom,
       format_type: fmtType,
+      nombre_produits: detectedCount,
       parfums: existingInclus,
       prix: fmt?.prix || '',
       stock: fmt?.stock || 10,
@@ -283,21 +292,38 @@ export default function AdminProducts() {
     setShowPackModal(true)
   }
 
+  const handleSetPackSize = (count) => {
+    const validCount = Math.max(2, parseInt(count, 10) || 2)
+    setPackData(prev => {
+      let updatedNom = prev.nom
+      if (!prev.nom || prev.nom.startsWith('Pack')) {
+        updatedNom = `Pack Spécial (${validCount} Gels Douche 250ml)`
+      }
+      return {
+        ...prev,
+        nombre_produits: validCount,
+        format_type: `pack_${validCount}`,
+        nom: updatedNom,
+        parfums: prev.parfums.slice(0, validCount),
+      }
+    })
+  }
+
   const togglePackParfum = (parfumId) => {
     setPackData(prev => {
       const exists = prev.parfums.includes(parfumId)
       if (exists) {
         return { ...prev, parfums: prev.parfums.filter(id => id !== parfumId) }
       }
-      if (prev.parfums.length >= 4) {
-        alert('Un pack spécial peut contenir au maximum 4 gels douche.')
+      const targetCount = prev.nombre_produits || 3
+      if (prev.parfums.length >= targetCount) {
+        alert(`Ce pack est configuré pour ${targetCount} parfum${targetCount > 1 ? 's' : ''}. Si vous souhaitez en ajouter davantage, augmentez le nombre de produits du pack ci-dessus.`)
         return prev
       }
       const newParfums = [...prev.parfums, parfumId]
       let suggestedNom = prev.nom
       if (!prev.nom || prev.nom.startsWith('Pack')) {
-        const count = newParfums.length
-        suggestedNom = `Pack Spécial (${count} Gels Douche 250ml)`
+        suggestedNom = `Pack Spécial (${targetCount} Gels Douche 250ml)`
       }
 
       return {
@@ -310,8 +336,13 @@ export default function AdminProducts() {
 
   const handleSavePack = async (e) => {
     e.preventDefault()
-    if (packData.parfums.length < 2 || packData.parfums.length > 4) {
-      alert('Veuillez sélectionner entre 2 et 4 parfums pour composer ce pack spécial.')
+    const targetCount = packData.nombre_produits || packData.parfums.length
+    if (packData.parfums.length < 2) {
+      alert('Veuillez sélectionner au moins 2 parfums pour composer ce pack spécial.')
+      return
+    }
+    if (packData.parfums.length !== targetCount) {
+      alert(`Veuillez sélectionner exactement ${targetCount} parfums (actuellement : ${packData.parfums.length}) ou ajuster le nombre de produits du pack.`)
       return
     }
     if (!packData.prix || parseFloat(packData.prix) <= 0) {
@@ -328,7 +359,8 @@ export default function AdminProducts() {
     try {
       const data = new FormData()
       data.append('nom', packData.nom)
-      data.append('format_type', packData.format_type)
+      data.append('nombre_produits', targetCount)
+      data.append('format_type', `pack_${targetCount}`)
       data.append('prix', packData.prix)
       data.append('stock', packData.stock)
       data.append('description', packData.description)
@@ -645,7 +677,7 @@ export default function AdminProducts() {
                       {editingPackId ? 'Modifier le Pack Spécial' : 'Créer un Pack Spécial'}
                     </h2>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Sélectionnez entre 2 et 4 parfums existants, choisissez le format et fixez le prix total
+                      Définissez librement le nombre de parfums dans le pack, choisissez les fragrances et fixez le prix total
                     </p>
                   </div>
                 </div>
@@ -661,55 +693,93 @@ export default function AdminProducts() {
               </div>
 
               <form onSubmit={handleSavePack} className="space-y-5">
-                {/* 1. Choix du Format pour tout le Pack */}
+                {/* 1. Choix du nombre de produits dans ce Pack */}
                 <div>
-                  <label className="text-gray-700 text-xs font-bold uppercase tracking-wider block mb-2">
-                    1. Format des parfums dans ce pack *
-                  </label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { id: 'pack_3', label: 'Pack de 3 Gels', sub: '3 x 250ml (ex: 239 DH)' },
-                      { id: 'pack_4', label: 'Pack de 4 Gels', sub: '4 x 250ml (ex: 299 DH)' },
-                      { id: 'flacon_250', label: 'Flacon 250ml', sub: 'Format 250ml' },
-                    ].map(fmt => (
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-gray-700 text-xs font-bold uppercase tracking-wider block">
+                      1. Nombre de produits dans ce pack (Gels douche 250ml) *
+                    </label>
+                    <span className="text-xs font-bold text-[#0f3d38] bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                      {packData.nombre_produits} flacons ({packData.nombre_produits * 250} ml au total)
+                    </span>
+                  </div>
+
+                  {/* Boutons rapides pour les formats courants */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+                    {[2, 3, 4, 5, 6].map(count => (
                       <button
-                        key={fmt.id}
+                        key={count}
                         type="button"
-                        onClick={() => setPackData({...packData, format_type: fmt.id})}
-                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                          packData.format_type === fmt.id
-                            ? 'bg-[#0f3d38] text-white border-[#0f3d38] shadow-sm'
-                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                        onClick={() => handleSetPackSize(count)}
+                        className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                          packData.nombre_produits === count
+                            ? 'bg-[#0f3d38] text-white border-[#0f3d38] shadow-sm font-bold ring-2 ring-[#0f3d38]/20'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 font-medium'
                         }`}
                       >
-                        <span className="block text-sm font-bold">{fmt.label}</span>
-                        <span className={`text-[10px] block mt-0.5 ${packData.format_type === fmt.id ? 'text-gray-300' : 'text-gray-400'}`}>
-                          {fmt.sub}
+                        <span className="block text-xs font-bold">Pack de {count}</span>
+                        <span className={`text-[10px] block mt-0.5 ${packData.nombre_produits === count ? 'text-emerald-300' : 'text-gray-400'}`}>
+                          {count} x 250ml
                         </span>
                       </button>
                     ))}
                   </div>
+
+                  {/* Saisie personnalisée libre du nombre de flacons */}
+                  <div className="flex items-center justify-between p-3 bg-amber-50/70 rounded-2xl border border-amber-200/90">
+                    <div className="text-xs text-amber-950 pr-2">
+                      <span className="font-bold block">Ou choisir un nombre personnalisé :</span>
+                      <span className="text-[11px] text-amber-800">Vous pouvez définir librement la composition (ex: 2, 7, 8... flacons)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSetPackSize(packData.nombre_produits - 1)}
+                        disabled={packData.nombre_produits <= 2}
+                        className="w-8 h-8 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="2"
+                        max="20"
+                        value={packData.nombre_produits}
+                        onChange={(e) => handleSetPackSize(parseInt(e.target.value) || 2)}
+                        className="w-14 text-center font-bold text-sm bg-white border border-amber-300 rounded-xl py-1 text-[#0f3d38] focus:outline-hidden focus:border-amber-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSetPackSize(packData.nombre_produits + 1)}
+                        className="w-8 h-8 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* 2. Sélection des 2 à 4 Parfums Inclus */}
+                {/* 2. Sélection des Parfums Inclus */}
                 <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <label className="text-amber-950 text-xs font-bold uppercase tracking-wider block">
-                        2. Sélectionner les parfums inclus (2 à 4 parfums) *
+                        2. Sélectionner les {packData.nombre_produits} parfums inclus *
                       </label>
                       <p className="text-[11px] text-amber-800 mt-0.5">
                         {packData.parfums.length === 0
-                          ? 'Cochez au moins 2 parfums dans la liste ci-dessous'
-                          : `${packData.parfums.length} parfum${packData.parfums.length > 1 ? 's' : ''} sélectionné${packData.parfums.length > 1 ? 's' : ''} (min 2, max 4)`}
+                          ? `Cochez ${packData.nombre_produits} parfums dans la liste ci-dessous`
+                          : packData.parfums.length === packData.nombre_produits
+                          ? `✓ Exactement ${packData.nombre_produits} parfums sélectionnés pour ce pack`
+                          : `${packData.parfums.length} / ${packData.nombre_produits} sélectionné${packData.parfums.length > 1 ? 's' : ''} (reste ${packData.nombre_produits - packData.parfums.length} à choisir)`}
                       </p>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      packData.parfums.length >= 2 && packData.parfums.length <= 4
-                        ? 'bg-emerald-100 text-emerald-800'
+                      packData.parfums.length === packData.nombre_produits
+                        ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                         : 'bg-amber-200 text-amber-900'
                     }`}>
-                      {packData.parfums.length} / 4
+                      {packData.parfums.length} / {packData.nombre_produits}
                     </span>
                   </div>
 
@@ -755,7 +825,7 @@ export default function AdminProducts() {
                       .filter(p => !packSearch || `${p.nom} ${p.marque_nom || ''}`.toLowerCase().includes(packSearch.toLowerCase()))
                       .map(p => {
                         const isChecked = packData.parfums.includes(p.id)
-                        const disabled = !isChecked && packData.parfums.length >= 4
+                        const disabled = !isChecked && packData.parfums.length >= packData.nombre_produits
 
                         return (
                           <label
@@ -890,10 +960,10 @@ export default function AdminProducts() {
                 <div className="flex gap-3 pt-3 border-t border-gray-100">
                   <button
                     type="submit"
-                    disabled={saving || packData.parfums.length < 2 || packData.parfums.length > 4}
+                    disabled={saving || packData.parfums.length < 2 || packData.parfums.length !== packData.nombre_produits}
                     className="flex-1 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-md"
                   >
-                    {saving ? 'Création en cours...' : editingPackId ? 'Mettre à jour le Pack' : 'Créer le Pack Spécial'}
+                    {saving ? 'Enregistrement en cours...' : editingPackId ? 'Mettre à jour le Pack' : 'Créer le Pack Spécial'}
                   </button>
                   <button
                     type="button"
@@ -1314,11 +1384,11 @@ export default function AdminProducts() {
               {/* Formats List */}
               <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto pr-1">
                 {promoFormats.map((fmt, idx) => {
-                  const formatLabel = fmt.type_format === 'pack_3'
-                    ? 'Pack Spécial (3 Gels Parfumés)'
-                    : fmt.type_format === 'pack_4'
-                    ? 'Pack Spécial (4 Gels Parfumés)'
-                    : 'Flacon 250ml'
+                  const formatLabel = fmt.type_format?.startsWith('pack_')
+                    ? `Pack Spécial (${fmt.type_format.split('_')[1]} Gels Parfumés)`
+                    : fmt.type_format === 'flacon_250'
+                    ? 'Flacon 250ml'
+                    : fmt.type_format || 'Flacon 250ml'
 
                   const regularPrice = parseFloat(fmt.prix) || 0
                   const promoPrice = fmt.prix_promo ? parseFloat(fmt.prix_promo) : null

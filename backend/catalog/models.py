@@ -191,8 +191,12 @@ class Parfum(models.Model):
 class Format(models.Model):
     TYPE_CHOICES = [
         ('flacon_250', 'Flacon 250ml'),
+        ('pack_2', 'Pack de 2 Gels (250ml)'),
         ('pack_3', 'Pack de 3 Gels (250ml)'),
         ('pack_4', 'Pack de 4 Gels (250ml)'),
+        ('pack_5', 'Pack de 5 Gels (250ml)'),
+        ('pack_6', 'Pack de 6 Gels (250ml)'),
+        ('pack_perso', 'Pack Personnalisé (250ml)'),
         ('complet', 'Flacon Complet 250ml'),
         ('decant_10', 'Format 10ml'),
         ('decant_5', 'Format 5ml'),
@@ -210,6 +214,15 @@ class Format(models.Model):
         verbose_name = 'Format'
         verbose_name_plural = 'Formats'
         unique_together = ['parfum', 'type_format']
+
+    def get_type_format_display(self):
+        for code, label in self.TYPE_CHOICES:
+            if code == self.type_format:
+                return label
+        if self.type_format and self.type_format.startswith('pack_'):
+            num = self.type_format.split('_')[1]
+            return f"Pack de {num} Gels (250ml)"
+        return self.type_format
 
     def __str__(self):
         return f"{self.parfum.nom} - {self.get_type_format_display()} ({self.contenance_ml}ml)"

@@ -32,13 +32,12 @@ export default function AdminStock() {
     loadData()
   }, [])
 
-  // Trouver le format principal du parfum (flacon 250ml, pack_3, pack_4 ou complet)
+  // Trouver le format principal du parfum (flacon 250ml ou pack de N gels)
   const getMainFormat = (parfum) => {
     if (!parfum?.formats || parfum.formats.length === 0) return null
     return (
+      parfum.formats.find((f) => f.type_format?.includes('pack')) ||
       parfum.formats.find((f) => f.type_format === 'flacon_250') ||
-      parfum.formats.find((f) => f.type_format === 'pack_3') ||
-      parfum.formats.find((f) => f.type_format === 'pack_4') ||
       parfum.formats.find((f) => f.type_format === 'complet') ||
       parfum.formats[0]
     )
@@ -418,13 +417,15 @@ export default function AdminStock() {
                         {p.is_pack ? (
                           <div className="space-y-0.5">
                             <span className="font-bold text-gray-800 block text-xs">
-                              {mainFormat?.type_format === 'pack_4' ? 'Pack de 4 Gels' : 'Pack de 3 Gels'}
+                              {mainFormat?.type_format?.startsWith('pack_')
+                                ? `Pack de ${mainFormat.type_format.split('_')[1]} Gels`
+                                : (p.parfums_inclus_detail?.length ? `Pack de ${p.parfums_inclus_detail.length} Gels` : 'Pack Spécial')}
                             </span>
                             <span className="text-[11px] text-gray-400">250ml par flacon</span>
                           </div>
                         ) : (
                           <div className="space-y-0.5">
-                            <span className="font-bold text-[#0f3d38] block text-xs">Flacon Complet</span>
+                            <span className="font-bold text-[#0f3d38] block text-xs">Flacon 250ml</span>
                             <span className="text-[11px] text-gray-500 font-medium">Contenance 250 ml</span>
                           </div>
                         )}

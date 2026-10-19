@@ -136,28 +136,21 @@ class ParfumViewSet(viewsets.ModelViewSet):
                 parfums_ids = [int(p) for p in parfums_ids.split(',') if p.strip().isdigit()]
 
         parfums_ids = [int(p) for p in parfums_ids if str(p).isdigit()]
-        if len(parfums_ids) < 2 or len(parfums_ids) > 4:
-            return Response({'error': 'Un pack spécial doit contenir entre 2 et 4 parfums.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(parfums_ids) < 2:
+            return Response({'error': 'Un pack spécial doit contenir au moins 2 parfums.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        format_type = str(request.data.get('format_type', 'pack_3')).lower()
-        if 'pack_4' in format_type or len(parfums_ids) == 4 or '4' in format_type:
-            db_type = 'pack_4'
-            ml = 250
-        elif 'pack_3' in format_type or len(parfums_ids) == 3 or '3' in format_type:
-            db_type = 'pack_3'
-            ml = 250
-        elif '5' in format_type:
-            db_type = 'decant_5'
-            ml = 5
-        elif '10' in format_type:
-            db_type = 'decant_10'
-            ml = 10
-        elif 'complet' in format_type or '250' in format_type:
-            db_type = 'flacon_250'
-            ml = 250
+        nb_produits = request.data.get('nombre_produits')
+        if nb_produits and str(nb_produits).isdigit():
+            count = int(nb_produits)
         else:
-            db_type = 'flacon_250'
-            ml = 250
+            count = len(parfums_ids)
+
+        format_type = str(request.data.get('format_type', '')).lower()
+        if 'pack_' in format_type:
+            db_type = format_type
+        else:
+            db_type = f'pack_{count}'
+        ml = 250
 
         try:
             prix_total = float(request.data.get('prix', 0))
@@ -284,30 +277,29 @@ class ParfumViewSet(viewsets.ModelViewSet):
                 except Exception:
                     parfums_ids = [int(p) for p in parfums_ids.split(',') if p.strip().isdigit()]
             parfums_ids = [int(p) for p in parfums_ids if str(p).isdigit()]
-            if len(parfums_ids) >= 2 and len(parfums_ids) <= 4:
+            if len(parfums_ids) >= 2:
                 parfum.parfums_inclus.set(Parfum.objects.filter(id__in=parfums_ids))
 
         parfum.save()
         parfum.sync_collections()
 
         format_type = request.data.get('format_type')
+        nb_produits = request.data.get('nombre_produits')
+        count = int(nb_produits) if (nb_produits and str(nb_produits).isdigit()) else parfum.parfums_inclus.count()
+
         prix = request.data.get('prix')
         stock = request.data.get('stock')
 
         fmt = parfum.formats.first()
         if not fmt:
-            fmt = Format(parfum=parfum, type_format='decant_10', contenance_ml=10, prix=0, stock=0)
+            fmt = Format(parfum=parfum, type_format=f'pack_{count or 3}', contenance_ml=250, prix=0, stock=0)
 
-        if format_type:
-            if '5' in format_type:
-                fmt.type_format = 'decant_5'
-                fmt.contenance_ml = 5
-            elif 'complet' in format_type or '100' in format_type:
-                fmt.type_format = 'complet'
-                fmt.contenance_ml = 100
-            else:
-                fmt.type_format = 'decant_10'
-                fmt.contenance_ml = 10
+        if format_type and 'pack' in str(format_type).lower():
+            fmt.type_format = str(format_type).lower()
+            fmt.contenance_ml = 250
+        elif count:
+            fmt.type_format = f'pack_{count}'
+            fmt.contenance_ml = 250
 
         if prix is not None:
             fmt.prix = float(prix)

@@ -166,14 +166,26 @@ export default function CheckoutPage() {
     }
   }
 
-  const formatLabels = {
+  const formatLabels = new Proxy({
     decant_5: 'Format 5ml',
     decant_10: 'Pack Spécial',
     complet: 'Gel Douche 250ml',
     flacon_250: 'Gel Douche 250ml',
+    pack_2: 'Pack Spécial (2 Gels Parfumés)',
     pack_3: 'Pack Spécial (3 Gels Parfumés)',
     pack_4: 'Pack Spécial (4 Gels Parfumés)',
-  }
+    pack_5: 'Pack Spécial (5 Gels Parfumés)',
+    pack_6: 'Pack Spécial (6 Gels Parfumés)',
+  }, {
+    get(target, prop) {
+      if (typeof prop === 'string') {
+        if (target[prop]) return target[prop]
+        const match = prop.match(/pack_(\d+)/i)
+        if (match) return `Pack Spécial (${match[1]} Gels Parfumés)`
+      }
+      return target[prop] || 'Gel Douche 250ml'
+    }
+  })
 
   if (success) {
     return (

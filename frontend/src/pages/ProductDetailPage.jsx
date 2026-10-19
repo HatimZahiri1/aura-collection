@@ -44,25 +44,35 @@ export default function ProductDetailPage() {
       .catch(console.error)
   }, [])
 
-  const formatLabels = {
+  const formatLabels = new Proxy({
     flacon_250: 'Gel Douche 250ml',
+    pack_2: 'Pack Spécial (2 Gels Parfumés)',
     pack_3: 'Pack Spécial (3 Gels Parfumés)',
     pack_4: 'Pack Spécial (4 Gels Parfumés)',
+    pack_5: 'Pack Spécial (5 Gels Parfumés)',
+    pack_6: 'Pack Spécial (6 Gels Parfumés)',
     complet: 'Gel Douche 250ml',
     decant_10: 'Pack Spécial',
     decant_5: 'Format 5ml',
-  }
+  }, {
+    get(target, prop) {
+      if (typeof prop === 'string') {
+        if (target[prop]) return target[prop]
+        const match = prop.match(/pack_(\d+)/i)
+        if (match) return `Pack Spécial (${match[1]} Gels Parfumés)`
+      }
+      return target[prop] || 'Gel Douche 250ml'
+    }
+  })
 
   const isPack = Boolean(parfum?.is_pack || selectedFormat?.type_format?.includes('pack'))
-  const targetCount = (
-    selectedFormat?.type_format === 'pack_4' ||
-    parfum?.nom?.includes('4') ||
-    parfum?.parfums_inclus_detail?.length === 4
-  ) ? 4 : (
-    selectedFormat?.type_format === 'pack_3' ||
-    parfum?.nom?.includes('3') ||
-    parfum?.parfums_inclus_detail?.length === 3
-  ) ? 3 : (isPack ? 3 : 0)
+  const formatPackMatch = selectedFormat?.type_format?.match(/pack_(\d+)/i)
+  const formatPackCount = formatPackMatch ? parseInt(formatPackMatch[1], 10) : null
+  const inclusCount = parfum?.parfums_inclus_detail?.length || (Array.isArray(parfum?.parfums_inclus) ? parfum.parfums_inclus.length : null)
+  const nomMatch = parfum?.nom?.match(/(\d+)\s*(?:gels?|produits?|flacons?|parfums?)/i) || parfum?.nom?.match(/pack.*?(\d+)/i)
+  const nomCount = nomMatch ? parseInt(nomMatch[1], 10) : null
+
+  const targetCount = isPack ? (formatPackCount || inclusCount || nomCount || 3) : 0
 
   const availableStock = selectedFormat?.stock ?? (parfum?.en_stock ? 10 : 0)
   const isOutOfStock = availableStock <= 0
