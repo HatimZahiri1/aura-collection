@@ -84,19 +84,14 @@ class ChangePasswordView(APIView):
         new_password = data.get('new_password', '')
         confirm_password = data.get('confirm_password', '')
 
-        # 1. Vérification mot de passe actuel
-        if not current_password:
-            return Response(
-                {'current_password': ["Veuillez renseigner votre mot de passe actuel."]},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if not user.check_password(current_password):
+        # Vérification optionnelle de l'ancien mot de passe s'il est fourni
+        if current_password and not user.check_password(current_password):
             return Response(
                 {'current_password': ["Le mot de passe actuel est incorrect."]},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 2. Vérification nouveau mot de passe
+        # 1. Vérification nouveau mot de passe
         if not new_password:
             return Response(
                 {'new_password': ["Veuillez renseigner un nouveau mot de passe."]},
@@ -108,18 +103,18 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 3. Confirmation
+        # 2. Confirmation
         if new_password != confirm_password:
             return Response(
-                {'confirm_password': ["Les deux nouveaux mots de passe ne correspondent pas."]},
+                {'confirm_password': ["Les deux mots de passe ne correspondent pas."]},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 4. Enregistrement sécurisé
+        # 3. Enregistrement sécurisé
         user.set_password(new_password)
         user.save()
 
-        # 5. Régénération automatique des tokens pour maintenir la session connectée
+        # 4. Régénération automatique des tokens pour maintenir la session connectée
         refresh = RefreshToken.for_user(user)
 
         return Response({

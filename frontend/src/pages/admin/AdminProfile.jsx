@@ -8,21 +8,17 @@ export default function AdminProfile() {
   const [profileData, setProfileData] = useState({
     id: null,
     username: '',
-    email: '',
     is_superuser: false,
     date_joined: '',
   })
   const [usernameInput, setUsernameInput] = useState('')
-  const [emailInput, setEmailInput] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState('')
   const [profileError, setProfileError] = useState('')
 
   // Password state
-  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
@@ -41,7 +37,6 @@ export default function AdminProfile() {
       const res = await adminAPI.getProfile()
       setProfileData(res.data)
       setUsernameInput(res.data.username || '')
-      setEmailInput(res.data.email || '')
     } catch (err) {
       setProfileError("Impossible de charger les données du profil.")
     } finally {
@@ -64,10 +59,9 @@ export default function AdminProfile() {
     try {
       const res = await adminAPI.updateProfile({
         username: usernameInput.trim(),
-        email: emailInput.trim(),
       })
-      setProfileData(res.data.user || { ...profileData, username: usernameInput, email: emailInput })
-      setProfileSuccess(res.data.detail || "Nom d'utilisateur et email enregistrés avec succès !")
+      setProfileData(res.data.user || { ...profileData, username: usernameInput })
+      setProfileSuccess(res.data.detail || "Nom d'utilisateur enregistré avec succès !")
       setTimeout(() => setProfileSuccess(''), 5000)
     } catch (err) {
       const data = err.response?.data
@@ -76,7 +70,7 @@ export default function AdminProfile() {
       } else if (data?.detail) {
         setProfileError(data.detail)
       } else {
-        setProfileError("Une erreur est survenue lors de la mise à jour du profil.")
+        setProfileError("Une erreur est survenue lors de la mise à jour du nom d'utilisateur.")
       }
     } finally {
       setSavingProfile(false)
@@ -100,8 +94,8 @@ export default function AdminProfile() {
   }
 
   const pwdStrength = getPasswordStrength(newPassword)
-  const passwordsMatch = newPassword && confirmPassword && newPassword === confirmPassword
-  const passwordMismatch = confirmPassword && newPassword !== confirmPassword
+  const passwordsMatch = Boolean(newPassword && confirmPassword && newPassword === confirmPassword)
+  const passwordMismatch = Boolean(confirmPassword && newPassword !== confirmPassword)
 
   // Handle Password Change
   const handleChangePassword = async (e) => {
@@ -109,36 +103,28 @@ export default function AdminProfile() {
     setPasswordSuccess('')
     setPasswordError('')
 
-    if (!currentPassword) {
-      setPasswordError("Veuillez saisir votre mot de passe actuel.")
-      return
-    }
     if (!newPassword || newPassword.length < 6) {
-      setPasswordError("Le nouveau mot de passe doit comporter au moins 6 caractères.")
+      setPasswordError("Le mot de passe doit comporter au moins 6 caractères.")
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError("Les deux nouveaux mots de passe ne correspondent pas.")
+      setPasswordError("Les deux mots de passe ne correspondent pas.")
       return
     }
 
     setSavingPassword(true)
     try {
       const res = await adminAPI.changePassword({
-        current_password: currentPassword,
         new_password: newPassword,
         confirm_password: confirmPassword,
       })
       setPasswordSuccess(res.data.detail || "Votre mot de passe a été modifié avec succès !")
-      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       setTimeout(() => setPasswordSuccess(''), 6000)
     } catch (err) {
       const data = err.response?.data
-      if (data?.current_password) {
-        setPasswordError(Array.isArray(data.current_password) ? data.current_password[0] : data.current_password)
-      } else if (data?.new_password) {
+      if (data?.new_password) {
         setPasswordError(Array.isArray(data.new_password) ? data.new_password[0] : data.new_password)
       } else if (data?.confirm_password) {
         setPasswordError(Array.isArray(data.confirm_password) ? data.confirm_password[0] : data.confirm_password)
@@ -195,7 +181,7 @@ export default function AdminProfile() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         
         {/* ========================================================= */}
-        {/* CARTE 1 : Nom d'utilisateur & Informations générales       */}
+        {/* CARTE 1 : Nom d'utilisateur                                */}
         {/* ========================================================= */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -212,10 +198,10 @@ export default function AdminProfile() {
               </div>
               <div>
                 <h2 className="text-base font-bold text-[#0f3d38] uppercase tracking-wider">
-                  Identifiants du Compte
+                  Nom d'utilisateur
                 </h2>
                 <p className="text-xs text-gray-500">
-                  Modifiez votre nom d'utilisateur utilisé pour vous connecter
+                  Modifiez le nom d'utilisateur utilisé pour vous connecter
                 </p>
               </div>
             </div>
@@ -272,38 +258,15 @@ export default function AdminProfile() {
                     placeholder="ex: admin"
                   />
                 </div>
-                <p className="text-[11px] text-gray-500 mt-1.5 flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <p className="text-[11px] text-gray-500 mt-2 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Ce nom sera requis lors de votre prochaine connexion sur la page d'administration.
                 </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
-                  Email administratif
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#f8faf9] border border-gray-200 focus:border-[#2fb49c] focus:bg-white rounded-xl text-sm font-medium text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-[#2fb49c]/20"
-                    placeholder="admin@parfum.ma"
-                  />
-                </div>
-                <p className="text-[11px] text-gray-500 mt-1.5">
-                  Utilisé pour recevoir les alertes système ou les notifications de réinitialisation.
-                </p>
-              </div>
-
-              <div className="pt-2">
+              <div className="pt-3">
                 <button
                   type="submit"
                   disabled={savingProfile || loadingProfile}
@@ -326,16 +289,11 @@ export default function AdminProfile() {
               </div>
             </form>
           </div>
-
-          <div className="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Rôle système</span>
-            <span className="font-semibold text-[#0f3d38]">Administrateur Principal</span>
-          </div>
         </motion.div>
 
 
         {/* ========================================================= */}
-        {/* CARTE 2 : Mot de passe & Sécurité                          */}
+        {/* CARTE 2 : Mot de passe & Confirmation                      */}
         {/* ========================================================= */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -355,7 +313,7 @@ export default function AdminProfile() {
                   Modifier le Mot de Passe
                 </h2>
                 <p className="text-xs text-gray-500">
-                  Renouvelez votre mot de passe pour garantir la sécurité de la boutique
+                  Saisissez un nouveau mot de passe et confirmez-le
                 </p>
               </div>
             </div>
@@ -395,39 +353,6 @@ export default function AdminProfile() {
             </AnimatePresence>
 
             <form onSubmit={handleChangePassword} className="mt-6 space-y-4">
-              {/* Mot de passe actuel */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                  Mot de passe actuel <span className="text-[#2fb49c]">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    className="w-full px-4 py-2.5 pr-10 bg-[#f8faf9] border border-gray-200 focus:border-[#2fb49c] focus:bg-white rounded-xl text-sm font-medium text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-[#2fb49c]/20"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    {showCurrentPassword ? (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
               {/* Nouveau mot de passe */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
@@ -440,7 +365,7 @@ export default function AdminProfile() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={6}
-                    className="w-full px-4 py-2.5 pr-10 bg-[#f8faf9] border border-gray-200 focus:border-[#2fb49c] focus:bg-white rounded-xl text-sm font-medium text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-[#2fb49c]/20"
+                    className="w-full px-4 py-3 pr-10 bg-[#f8faf9] border border-gray-200 focus:border-[#2fb49c] focus:bg-white rounded-xl text-sm font-medium text-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-[#2fb49c]/20"
                     placeholder="Au moins 6 caractères"
                   />
                   <button
@@ -481,7 +406,7 @@ export default function AdminProfile() {
               {/* Confirmer le nouveau mot de passe */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                  Confirmer le nouveau mot de passe <span className="text-[#2fb49c]">*</span>
+                  Confirmer le mot de passe <span className="text-[#2fb49c]">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -489,7 +414,7 @@ export default function AdminProfile() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className={`w-full px-4 py-2.5 pr-10 bg-[#f8faf9] border rounded-xl text-sm font-medium text-gray-800 transition-all focus:outline-none focus:ring-2 ${
+                    className={`w-full px-4 py-3 pr-10 bg-[#f8faf9] border rounded-xl text-sm font-medium text-gray-800 transition-all focus:outline-none focus:ring-2 ${
                       passwordsMatch
                         ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-200'
                         : passwordMismatch
@@ -517,7 +442,7 @@ export default function AdminProfile() {
                 </div>
 
                 {passwordsMatch && (
-                  <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-1.5 flex items-center gap-1">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
@@ -525,13 +450,13 @@ export default function AdminProfile() {
                   </p>
                 )}
                 {passwordMismatch && (
-                  <p className="text-[11px] text-red-500 font-semibold mt-1">
+                  <p className="text-[11px] text-red-500 font-semibold mt-1.5">
                     Les mots de passe ne correspondent pas encore.
                   </p>
                 )}
               </div>
 
-              <div className="pt-2">
+              <div className="pt-3">
                 <button
                   type="submit"
                   disabled={savingPassword || passwordMismatch || !newPassword}
@@ -554,35 +479,8 @@ export default function AdminProfile() {
               </div>
             </form>
           </div>
-
-          <div className="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Sécurité session</span>
-            <span className="font-semibold text-emerald-600 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Chiffrement Django sécurisé
-            </span>
-          </div>
         </motion.div>
 
-      </div>
-
-      {/* 3. Carte d'information & Bonnes Pratiques */}
-      <div className="bg-[#f0fbf8] border border-[#d4e8e3] rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#0f3d38] text-white flex items-center justify-center shrink-0 shadow-md">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-[#0f3d38] uppercase tracking-wider">
-              Conseils de protection AURA COLLECTION
-            </h3>
-            <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
-              Conservez précieusement vos nouveaux identifiants. Si vous changez votre nom d'utilisateur ou mot de passe, pensez à le noter ou à l'enregistrer dans votre gestionnaire de mots de passe.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   )
